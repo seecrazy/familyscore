@@ -118,6 +118,14 @@ enum DemoData {
             context.insert(WishListItem(memberID: ming.id, rewardID: money.id))
         }
 
+        // 小明以儿童身份刚提交的洗碗记录（带"凭证"备注）→ 妈妈首页可见待评审
+        if let dish = rules.first(where: { $0.name == "洗碗" }) {
+            _ = try? ScoreEngine.submit(
+                member: ming, family: family, rule: dish,
+                note: "晚饭的碗我来洗", at: now.addingTimeInterval(-1800),
+                actorIsAdmin: false, approver: nil, context: context)
+        }
+
         // 徽章：全家"首周满勤"式徽章点缀
         context.insert(Badge(memberID: mom.id, badgeKey: "weekFull"))
         context.insert(Badge(memberID: ming.id, badgeKey: "studyKing"))

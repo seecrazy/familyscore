@@ -5,6 +5,7 @@ import SwiftData
 struct RewardAdminSheet: View {
     @EnvironmentObject var app: AppEnvironment
     @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
     @Query private var allRewards: [Reward]
 
     @State private var editing: Reward?
@@ -65,6 +66,9 @@ struct RewardAdminSheet: View {
             .navigationTitle("奖励商城管理")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("完成") { dismiss() }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         showNew = true

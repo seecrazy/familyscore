@@ -210,6 +210,7 @@ struct MemberSwitcherSheet: View {
 struct FamilyManageSheet: View {
     @EnvironmentObject var app: AppEnvironment
     @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
     @Query private var allMembers: [Member]
 
     @State private var newName = ""
@@ -271,6 +272,12 @@ struct FamilyManageSheet: View {
             }
             .navigationTitle("家庭管理")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { dismiss() }
+                        .fontWeight(.semibold)
+                }
+            }
             .sheet(item: $editingBirthday) { m in
                 BirthdayEditSheet(member: m)
                     .presentationDetents([.medium])

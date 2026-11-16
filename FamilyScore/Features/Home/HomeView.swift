@@ -263,6 +263,7 @@ struct HomeView: View {
                 Image(systemName: "person.crop.circle")
             }
         }
+        .accessibilityLabel("切换成员")
         .sheet(isPresented: $showSwitcher) { MemberSwitcherSheet() }
     }
     @State private var showSwitcher = false

@@ -50,6 +50,26 @@ struct FamilySettings: Codable {
     var approverDailyLimit: Int = 20       // 同一确认人每日确认上限
     var repeatWindowMinutes: Int = 5       // 同成员同规则重复窗口
     var requireDoubleParentForDeduction: Bool = true // 减分双家长确认
+    // v2.1：所有打卡需至少一名家长评审通过（家长本人提交自动视为已评审）。
+    // Optional 存储：旧库轻量迁移时无值可容，读取走计算属性。
+    var requireReviewAll: Bool? = true
+
+    /// 是否启用"全部打卡需评审"（默认开）
+    var requiresReviewAllCheckIns: Bool { requireReviewAll ?? true }
+
+    init() {}
+
+    // 旧库迁移兼容：缺 key 的旧 JSON 按默认值解码
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        dailyDeductionCap = try c.decodeIfPresent(Int.self, forKey: .dailyDeductionCap) ?? 20
+        weeklyGoal = try c.decodeIfPresent(Int.self, forKey: .weeklyGoal) ?? 500
+        doublePointsMultiplier = try c.decodeIfPresent(Double.self, forKey: .doublePointsMultiplier) ?? 1
+        approverDailyLimit = try c.decodeIfPresent(Int.self, forKey: .approverDailyLimit) ?? 20
+        repeatWindowMinutes = try c.decodeIfPresent(Int.self, forKey: .repeatWindowMinutes) ?? 5
+        requireDoubleParentForDeduction = try c.decodeIfPresent(Bool.self, forKey: .requireDoubleParentForDeduction) ?? true
+        requireReviewAll = try c.decodeIfPresent(Bool.self, forKey: .requireReviewAll)
+    }
 }
 
 // MARK: - Member
@@ -68,6 +88,7 @@ final class Member {
     var status: MemberStatus
     var streakDays: Int                  // 当前连续打卡天数
     var lastCheckInDay: String?          // 最近打卡日 yyyy-MM-dd（家庭时区）
+    var birthday: Date?                  // 生日（提醒只取月日，v2.1）
     var pinCode: String?                 // 家长锁 PIN（admin）
 
     init(familyID: UUID, name: String, emoji: String, role: MemberRole,
@@ -84,6 +105,7 @@ final class Member {
         self.status = .active
         self.streakDays = 0
         self.lastCheckInDay = nil
+        self.birthday = nil
         self.pinCode = nil
     }
 
@@ -104,7 +126,7 @@ final class Rule {
     var requiresProof: Bool
     var requiresApproval: Bool
     var isActive: Bool
-    var sortOrder: Int
+    var sortOrder: Int = 0
 
     init(familyID: UUID, category: RuleCategory, name: String, icon: String, points: Int,
          dailyLimit: Int = 0, requiresProof: Bool = false, requiresApproval: Bool = false,
@@ -139,20 +161,22 @@ final class ScoreRecord {
     var multiplier: Double   // 活动倍率快照
     var category: RuleCategory
     var note: String?
-    var proofHash: String?   // 凭证感知哈希（pHash 去重）
+    var proofHash: String?   // 凭证内容哈希（SHA256 前缀，去重）
+    var proofImageData: Data? // 凭证缩略图 ≤200KB（v2.1，审批时查看）
     var status: RecordStatus
     var createdAt: Date
     var approvedBy: UUID?
     var reversedRecordID: UUID? // 本记录被哪条反向记录撤销
     var deviceID: String?
     var backfilledAt: Date?     // 补录的实际录入时刻（A5 审计用，正常提交为 nil）
-    var isReversal: Bool        // 反向记录（撤销生成，不参与累计/streak 正向语义）
+    var isReversal: Bool = false // 反向记录（撤销生成，不参与累计/streak 正向语义）
 
     init(familyID: UUID, memberID: UUID, ruleID: UUID?, points: Int, basePoints: Int,
          coefficient: Double, multiplier: Double, category: RuleCategory,
          note: String? = nil, proofHash: String? = nil, status: RecordStatus,
          createdAt: Date = .now, approvedBy: UUID? = nil, deviceID: String? = nil,
-         backfilledAt: Date? = nil, isReversal: Bool = false) {
+         backfilledAt: Date? = nil, isReversal: Bool = false,
+         proofImageData: Data? = nil) {
         self.id = UUID()
         self.familyID = familyID
         self.memberID = memberID
@@ -170,6 +194,7 @@ final class ScoreRecord {
         self.deviceID = deviceID
         self.backfilledAt = backfilledAt
         self.isReversal = isReversal
+        self.proofImageData = proofImageData
     }
 }
 

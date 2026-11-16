@@ -17,6 +17,10 @@ enum DemoData {
         let grandma = Member(familyID: familyID, name: "奶奶", emoji: "👵", role: .elder)
         family.ownerID = mom.id
         family.id = familyID
+        // v2.1：生日样例——妈妈今天生日、小明 3 天后，首页提醒卡立即可见
+        mom.birthday = Calendar.current.date(byAdding: .year, value: -34,
+                                             to: Calendar.current.startOfDay(for: now)) ?? now
+        ming.birthday = now.addingTimeInterval(3 * 86400)
         context.insert(family)
         let members = [dad, mom, ming, didi, grandma]
         members.forEach { context.insert($0) }

@@ -187,9 +187,13 @@ final class IntegrationTests: XCTestCase {
                                                       context: context)) // 分不够
         let big = TestDB.makeRule(family, points: 200, name: "攒大分")
         context.insert(big)
-        _ = try ScoreEngine.submit(member: kid, family: family, rule: big,
-                                   at: .testNow.addingTimeInterval(-60), actorIsAdmin: false,
-                                   forceRepeated: true, context: context)
+        // createFamily 默认开启"全部打卡需评审"：儿童提交 → 家长评审后入账
+        let bigOut = try ScoreEngine.submit(member: kid, family: family, rule: big,
+                                            at: .testNow.addingTimeInterval(-60), actorIsAdmin: false,
+                                            forceRepeated: true, context: context)
+        if case .pendingApproval(let pendingBig) = bigOut {
+            _ = try ScoreEngine.approve(record: pendingBig, family: family, by: owner, context: context)
+        }
         let redemption = try RewardService.redeem(member: kid, family: family, reward: ice,
                                                   context: context)
         XCTAssertTrue(RewardService.isValidCode(redemption.code))

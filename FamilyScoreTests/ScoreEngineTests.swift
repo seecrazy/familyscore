@@ -14,11 +14,13 @@ enum TestDB {
         return ModelContext(container)
     }
 
-    /// 标准五口家庭（UTC 时区便于跨时区断言）
+    /// 标准五口家庭（UTC 时区便于跨时区断言）。
+    /// 默认关闭"全部打卡需评审"，引擎行为测试在免评审语境跑；评审流见 ReviewFlowTests。
     static func makeFamily(context: ModelContext,
                            timezoneID: String = "UTC") -> (family: Family, dad: Member, mom: Member, child: Member) {
         let familyID = UUID()
         let family = Family(name: "测试家", ownerID: UUID(), timezoneID: timezoneID)
+        family.settingsData.requireReviewAll = false
         let dad = Member(familyID: familyID, name: "爸爸", emoji: "👨", role: .admin)
         let mom = Member(familyID: familyID, name: "妈妈", emoji: "👩", role: .admin)
         let child = Member(familyID: familyID, name: "小明", emoji: "👦", role: .child)

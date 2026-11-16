@@ -11,6 +11,7 @@ struct ConfirmSheet: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @State private var note = ""
+    @State private var proofData: Data?
     @State private var showRepeatConfirm = false
     @State private var repeatError: ScoreEngineError?
     @AppStorage("currentMemberID") private var currentMemberID: String = ""
@@ -19,6 +20,12 @@ struct ConfirmSheet: View {
         guard let id = UUID(uuidString: currentMemberID),
               let me = ScoreEngine.fetchMember(id, context: context) else { return false }
         return me.role == .admin
+    }
+
+    /// 该次提交是否需要评审（用于 UI 提示）：家长本人提交视为当场通过
+    private var needReview: Bool {
+        let requires = rule.requiresApproval || family.settingsData.requiresReviewAllCheckIns
+        return requires && !actorIsAdmin
     }
 
     private var previewPoints: Int {
@@ -53,10 +60,19 @@ struct ConfirmSheet: View {
             }
             .padding(.horizontal)
 
-            if rule.requiresProof {
-                Label("该行为建议拍照凭证（体验版暂未开放相机）", systemImage: "camera")
+            VStack(alignment: .leading, spacing: 6) {
+                Label(rule.requiresProof ? "这个行为建议拍照证明一下" : "拍照凭证（可选）",
+                      systemImage: "camera")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(rule.requiresProof ? Theme.gold : .secondary)
+                ProofPicker(imageData: $proofData)
+            }
+            .padding(.horizontal)
+
+            if needReview {
+                Label("提交后需家长评审通过才入账", systemImage: "checkmark.shield")
+                    .font(.caption)
+                    .foregroundStyle(Theme.rankBlue)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
             }
@@ -112,6 +128,7 @@ struct ConfirmSheet: View {
         do {
             let outcome = try ScoreEngine.submit(
                 member: me, family: family, rule: rule, note: note.isEmpty ? nil : note,
+                proofImageData: proofData,
                 actorIsAdmin: actorIsAdmin,
                 approver: actorIsAdmin ? me.id : nil,
                 forceRepeated: force, context: context)
@@ -123,7 +140,7 @@ struct ConfirmSheet: View {
                        : "\(rec.points) \(rule.name) · 已记录")
             case .pendingApproval:
                 Haptics.light()
-                onDone("已提交，等家长确认后入账")
+                onDone("已提交，家长评审通过后就入账 🛡️")
             }
             dismiss()
         } catch let err as ScoreEngineError {

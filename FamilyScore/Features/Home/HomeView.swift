@@ -12,6 +12,9 @@ struct HomeView: View {
 
     @State private var sheetRule: Rule?
     @State private var toast: String?
+    @State private var showAssign = false
+    @State private var showExitDemo = false
+    @State private var birthdayList: [BirthdayService.Upcoming] = []
 
     private var family: Family? { app.currentFamily(in: context) }
     private var me: Member? { app.currentMember(in: context) }
@@ -34,6 +37,8 @@ struct HomeView: View {
                     VStack(spacing: 18) {
                         if let t = toast { toastView(t) }
                         header(family: family)
+                        if family.isDemo { demoBanner }
+                        if !birthdayList.isEmpty { birthdayCard }
                         ScoreCardView(summary: s, me: me)
                         if me.role == .admin, !s.pendingRecords.isEmpty {
                             approvalsSection(s)
@@ -60,7 +65,36 @@ struct HomeView: View {
                 }
                 .presentationDetents([.medium])
             }
+            .sheet(isPresented: $showAssign) { AssignmentSheet() }
+            .confirmationDialog("退出体验模式将清空演示数据，回到开屏引导",
+                                isPresented: $showExitDemo, titleVisibility: .visible) {
+                Button("退出并清空演示数据", role: .destructive) {
+                    FamilyService.exitDemoMode(context: context)
+                    app.currentMemberID = nil
+                    hasCompletedOnboarding = false
+                }
+                Button("取消", role: .cancel) {}
+            }
+            .onAppear(perform: refreshBirthdayAndNotifications)
+            .fullScreenCover(isPresented: Binding(get: { proofFullscreen != nil },
+                                                  set: { if !$0 { proofFullscreen = nil } })) {
+                if let img = proofFullscreen {
+                    FullscreenImageView(image: img)
+                }
+            }
         }
+    }
+
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+
+    private func refreshBirthdayAndNotifications() {
+        guard let f = family else { return }
+        let members = allMembers.filter { $0.familyID == f.id }
+        birthdayList = BirthdayService.upcoming(members: members, family: f)
+        NotificationService.requestAuthorization()
+        NotificationService.reschedule(
+            family: f, members: members,
+            assignments: allAssignments.filter { $0.familyID == f.id })
     }
 
     private func header(family: Family) -> some View {
@@ -98,7 +132,7 @@ struct HomeView: View {
 
     private func approvalsSection(_ s: HomeSummary) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("待我确认（\(s.pendingRecords.count)）", systemImage: "bell.badge")
+            Label("待我评审（\(s.pendingRecords.count)）", systemImage: "bell.badge")
                 .font(.headline)
             let byID = Dictionary(uniqueKeysWithValues: allMembers.filter { $0.familyID == family!.id }.map { ($0.id, $0) })
             ForEach(s.pendingRecords.prefix(4)) { rec in
@@ -115,6 +149,7 @@ struct HomeView: View {
                         Text(rec.points >= 0 ? "+\(rec.points)" : "\(rec.points)")
                             .font(.subheadline.weight(.bold).monospacedDigit())
                             .foregroundStyle(rec.points >= 0 ? Theme.addGreen : Theme.deductRed)
+                        proofThumb(rec)
                         Button {
                             Haptics.light()
                             try? ScoreEngine.approve(record: rec, family: family!, by: me!, context: context)
@@ -171,8 +206,22 @@ struct HomeView: View {
 
     private func todoSection(_ s: HomeSummary) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("今日待办（\(s.todayAssignments.filter { !$0.done }.count)）", systemImage: "checklist")
-                .font(.headline)
+            HStack {
+                Label("今日待办（\(s.todayAssignments.filter { !$0.done }.count)）", systemImage: "checklist")
+                    .font(.headline)
+                Spacer()
+                if me?.role == .admin {
+                    Button {
+                        Haptics.light()
+                        showAssign = true
+                    } label: {
+                        Label("指派", systemImage: "plus.circle.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
             if s.todayAssignments.isEmpty {
                 Text("今天没有待办，自由发挥 ✨")
                     .font(.caption)
@@ -217,6 +266,65 @@ struct HomeView: View {
         .sheet(isPresented: $showSwitcher) { MemberSwitcherSheet() }
     }
     @State private var showSwitcher = false
+
+    // MARK: 体验模式 banner（v2.1 需求 4）
+    private var demoBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "theatermasks.fill")
+                .foregroundStyle(Theme.rankBlue)
+            Text("体验模式 · 数据为演示数据")
+                .font(.caption.weight(.medium))
+            Spacer()
+            Button("退出体验") { showExitDemo = true }
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Theme.deductRed)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(Theme.rankBlue.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    // MARK: 生日提醒（v2.1 需求 6）
+    private var birthdayCard: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(birthdayList) { up in
+                    HStack(spacing: 8) {
+                        Text(up.isToday ? "🎂" : "🎁")
+                            .font(.title3)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(up.isToday ? "今天是\(up.member.name)的生日！"
+                                             : "\(up.member.name)的生日 · \(up.daysLeft) 天后")
+                                .font(.caption.weight(.semibold))
+                            Text(up.isToday ? "给 TA 一个大大的拥抱吧" : "提前准备个小惊喜")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(up.isToday ? Theme.gold.opacity(0.18) : Theme.primary.opacity(0.07),
+                                in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func proofThumb(_ rec: ScoreRecord) -> some View {
+        if let data = rec.proofImageData, let img = UIImage(data: data) {
+            Image(uiImage: img)
+                .resizable().scaledToFill()
+                .frame(width: 34, height: 34)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .onTapGesture { proofFullscreen = img }
+                .accessibilityLabel("查看凭证")
+        } else {
+            Image(systemName: "camera.metering.unknown")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+    }
+    @State private var proofFullscreen: UIImage?
+    @State private var showProofFull = false
 
     private func ruleName(_ id: UUID?) -> String {
         guard let id else { return "记录" }

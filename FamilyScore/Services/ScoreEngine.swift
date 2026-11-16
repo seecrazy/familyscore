@@ -1,5 +1,7 @@
 import Foundation
 import SwiftData
+import CryptoKit
+import UIKit
 
 /// 积分规则引擎（DESIGN.md §6）：计分公式、上限、防刷、双轨入账、撤销、连续打卡
 enum ScoreEngineError: LocalizedError, Equatable {
@@ -48,10 +50,14 @@ enum ScoreEngine {
     static func submit(
         member: Member, family: Family, rule: Rule,
         note: String? = nil, proofHash: String? = nil,
+        proofImageData: Data? = nil,
         at date: Date = .now, actorIsAdmin: Bool,
         approver: UUID? = nil, forceRepeated: Bool = false,
         context: ModelContext, autosave: Bool = true
     ) throws -> SubmitOutcome {
+        // 有图未给哈希时自动生成（SHA256 前 16 位，A4 去重语义）
+        let effectiveHash = proofHash ?? proofImageData.map(Self.contentHash)
+        let effectiveImage = Self.normalizedProof(proofImageData)
         guard rule.isActive else { throw ScoreEngineError.ruleInactive }
         guard rule.familyID == family.id, member.familyID == family.id else {
             throw ScoreEngineError.ruleInactive
@@ -75,7 +81,7 @@ enum ScoreEngine {
         }
 
         // 凭证哈希当日重复 → 实时拒绝（A4，§13.1）
-        if let ph = proofHash, !ph.isEmpty {
+        if let ph = effectiveHash, !ph.isEmpty {
             let fid = family.id
             let dayStart = FamilyCalendar.startOfDay(date, timezoneID: family.timezoneID)
             let dayEnd = dayStart.addingTimeInterval(86400)
@@ -111,15 +117,18 @@ enum ScoreEngine {
             }
         }
 
-        // 需家长确认 → pending 不入账（§6.3 requiresApproval）；
-        // 家长本人操作或代提交（approver 已给出）视为当场确认
-        let needApproval = rule.requiresApproval && !(actorIsAdmin && approver != nil)
+        // 评审策略（§6.3 + v2.1）：规则要求确认 或 家庭开启"全部打卡需评审"→ pending 不入账；
+        // 家长本人操作或代提交（approver 已给出）视为当场评审通过
+        let needApproval = (rule.requiresApproval || family.settingsData.requiresReviewAllCheckIns)
+            && !(actorIsAdmin && approver != nil)
         let record = ScoreRecord(
             familyID: family.id, memberID: member.id, ruleID: rule.id,
             points: points, basePoints: rule.points, coefficient: member.coefficient,
-            multiplier: multiplier, category: rule.category, note: finalNote, proofHash: proofHash,
+            multiplier: multiplier, category: rule.category, note: finalNote,
+            proofHash: effectiveHash,
             status: needApproval ? .pending : .approved,
-            createdAt: date, approvedBy: needApproval ? nil : (approver ?? member.id))
+            createdAt: date, approvedBy: needApproval ? nil : (approver ?? member.id),
+            proofImageData: effectiveImage)
         context.insert(record)
 
         if needApproval {
@@ -154,6 +163,7 @@ enum ScoreEngine {
         record.status = .approved
         record.approvedBy = approver.id
         try apply(record: record, to: member, family: family, context: context)
+        closeAssignmentIfNeeded(record: record, family: family, context: context)
         AuditService.log(familyID: family.id, actorID: approver.id, action: .approve,
                          targetID: record.id, context: context)
         return record
@@ -341,6 +351,39 @@ enum ScoreEngine {
     }
 
     // MARK: 辅助
+
+    /// 审批通过后，当日同成员同规则的开放指派自动完成（v2.1）
+    static func closeAssignmentIfNeeded(record: ScoreRecord, family: Family, context: ModelContext) {
+        guard let ruleID = record.ruleID else { return }
+        let todayKey = FamilyCalendar.dayKey(record.createdAt, timezoneID: family.timezoneID)
+        let assignee = record.memberID
+        let desc = FetchDescriptor<TaskAssignment>(predicate: #Predicate {
+            $0.assigneeID == assignee && $0.ruleID == ruleID && $0.dueDay == todayKey
+        })
+        for a in ((try? context.fetch(desc)) ?? []) where a.status == .open { a.status = .done }
+    }
+
+    /// 凭证缩略：最长边 ≤640px、JPEG ≤200KB（§5.2）
+    static func normalizedProof(_ data: Data?) -> Data? {
+        guard let data, let img = UIImage(data: data) else { return nil }
+        let maxSide: CGFloat = 640
+        let scale = min(1, maxSide / max(img.size.width, img.size.height))
+        let size = CGSize(width: img.size.width * scale, height: img.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let thumb = renderer.image { _ in img.draw(in: CGRect(origin: .zero, size: size)) }
+        var quality: CGFloat = 0.8
+        var out = thumb.jpegData(compressionQuality: quality)
+        while let d = out, d.count > 200_000, quality > 0.2 {
+            quality -= 0.15
+            out = thumb.jpegData(compressionQuality: quality)
+        }
+        return out
+    }
+
+    static func contentHash(_ data: Data) -> String {
+        SHA256.hash(data: data).prefix(8)
+            .map { String(format: "%02x", $0) }.joined()
+    }
 
     static func fetchMember(_ id: UUID, context: ModelContext) -> Member? {
         var d = FetchDescriptor<Member>(predicate: #Predicate { $0.id == id })

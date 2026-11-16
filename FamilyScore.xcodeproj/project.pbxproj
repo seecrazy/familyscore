@@ -379,6 +379,7 @@
 				DEVELOPMENT_TEAM = DFB7P62Y8F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEYNSCameraUsageDescription = "拍摄任务完成凭证，供家长评审";
 				INFOPLIST_KEYUIApplicationLaunchScreen_Generation = YES;
 				INFOPLIST_KEYUIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEYUIApplicationSupportsIndirectInputEvents = YES;
@@ -414,6 +415,7 @@
 				DEVELOPMENT_TEAM = DFB7P62Y8F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEYNSCameraUsageDescription = "拍摄任务完成凭证，供家长评审";
 				INFOPLIST_KEYUIApplicationLaunchScreen_Generation = YES;
 				INFOPLIST_KEYUIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEYUIApplicationSupportsIndirectInputEvents = YES;

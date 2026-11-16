@@ -14,6 +14,7 @@ struct ProfileView: View {
     @State private var showRules = false
     @State private var showAudit = false
     @State private var showRedeemAdmin = false
+    @State private var showRewardAdmin = false
 
     private var family: Family? { app.currentFamily(in: context) }
     private var me: Member? { app.currentMember(in: context) }
@@ -37,6 +38,7 @@ struct ProfileView: View {
             .sheet(isPresented: $showRules) { RuleAdminSheet() }
             .sheet(isPresented: $showAudit) { AuditLogSheet() }
             .sheet(isPresented: $showRedeemAdmin) { AdminRedeemSheet() }
+            .sheet(isPresented: $showRewardAdmin) { RewardAdminSheet() }
         }
     }
 
@@ -111,6 +113,7 @@ struct ProfileView: View {
         Section("家长工具") {
             row("person.2.fill", "家庭管理") { showFamilyManage = true }
             row("list.bullet.rectangle.portrait", "积分规则配置") { showRules = true }
+            row("gift.fill", "奖励商城管理") { showRewardAdmin = true }
             row("shield.lefthalf.filled", "审计日志") { showAudit = true }
             row("qrcode", "兑换核销") { showRedeemAdmin = true }
         }
@@ -212,8 +215,10 @@ struct FamilyManageSheet: View {
     @State private var newName = ""
     @State private var newRole: MemberRole = .child
     @State private var newEmoji = "👦"
+    @State private var editingBirthday: Member?
 
     private var family: Family? { app.currentFamily(in: context) }
+    private var me: Member? { app.currentMember(in: context) }
     private var members: [Member] {
         guard let f = family else { return [] }
         return allMembers.filter { $0.familyID == f.id }
@@ -221,31 +226,14 @@ struct FamilyManageSheet: View {
 
     private let emojis = ["👨", "👩", "👦", "👧", "👵", "👴", "🧑", "👶"]
 
+    private var isOwner: Bool { me?.id == family?.ownerID }
+
     var body: some View {
         NavigationStack {
             List {
                 Section("成员（\(members.filter { $0.status == .active }.count)）") {
                     ForEach(members) { m in
-                        HStack(spacing: 12) {
-                            MemberAvatarView(member: m, size: 38)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(m.name)
-                                Text(m.role == .admin ? "家长" : m.role == .child ? "孩子 · 系数 \(m.coefficient, specifier: "%.1f")" : "长辈")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if m.status == .exited {
-                                Text("已退出").font(.caption).foregroundStyle(.secondary)
-                            } else if m.id != family?.ownerID {
-                                Button("退出") {
-                                    FamilyService.exitMember(m, context: context)
-                                }
-                                .font(.caption)
-                                .foregroundStyle(Theme.deductRed)
-                            } else {
-                                Text("创建人").font(.caption2).foregroundStyle(.secondary)
-                            }
-                        }
+                        memberRow(m)
                     }
                 }
                 Section("添加成员") {
@@ -283,6 +271,140 @@ struct FamilyManageSheet: View {
             }
             .navigationTitle("家庭管理")
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(item: $editingBirthday) { m in
+                BirthdayEditSheet(member: m)
+                    .presentationDetents([.medium])
+            }
+        }
+    }
+
+    // MARK: 成员行：角色徽章 + 管理员设置（仅创建者）+ 退出/重新加入 + 生日
+    @ViewBuilder
+    private func memberRow(_ m: Member) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                MemberAvatarView(member: m, size: 38)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(m.name)
+                        if m.id == family?.ownerID {
+                            tag("创建人", Theme.gold)
+                        } else if m.role == .admin {
+                            tag("管理员", Theme.rankBlue)
+                        }
+                        tag(m.role == .admin ? "家长" : m.role == .child ? "孩子" : "长辈", .secondary)
+                    }
+                    HStack(spacing: 8) {
+                        Text("系数 \(m.coefficient, specifier: "%.1f") · 可用 \(m.availableScore) 分")
+                        if let bd = m.birthday {
+                            let cal = FamilyCalendar.calendar(timezoneID: family?.timezoneID ?? "UTC")
+                            Text("· 🎂\(cal.component(.month, from: bd))/\(cal.component(.day, from: bd))")
+                        }
+                    }
+                    .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                if m.status == .exited {
+                    Button("重新加入") {
+                        Haptics.success()
+                        FamilyService.rejoin(m, context: context)
+                    }
+                    .font(.caption.weight(.semibold))
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.addGreen)
+                } else if m.id != family?.ownerID {
+                    Menu {
+                        Button(role: .destructive, action: { FamilyService.exitMember(m, context: context) }) {
+                            Label("退出家庭", systemImage: "door.right.hand.exit")
+                        }
+                        Button(action: { editingBirthday = m }) {
+                            Label(m.birthday == nil ? "设置生日" : "修改生日", systemImage: "gift")
+                        }
+                        if isOwner {
+                            if m.role == .admin {
+                                Button(action: { applyAdmin(m, false) }) {
+                                    Label("取消管理员", systemImage: "person.badge.minus")
+                                }
+                            } else {
+                                Button(action: { applyAdmin(m, true) }) {
+                                    Label("设为管理员", systemImage: "person.badge.shield.checkmark")
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Button {
+                        editingBirthday = m
+                    } label: {
+                        Image(systemName: "gift")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func applyAdmin(_ m: Member, _ on: Bool) {
+        guard let me = me, let f = family else { return }
+        if FamilyService.setAdmin(m, family: f, by: me, isAdmin: on, context: context) {
+            Haptics.success()
+        }
+    }
+
+    private func tag(_ text: String, _ color: Color) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6).padding(.vertical, 1.5)
+            .background(color.opacity(0.14), in: Capsule())
+            .foregroundStyle(color == .secondary ? .secondary : color)
+    }
+}
+
+/// 生日编辑（v2.1 需求 6）
+struct BirthdayEditSheet: View {
+    let member: Member
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    @State private var date: Date = .now
+    @State private var hasBirthday = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Toggle("设置生日提醒", isOn: $hasBirthday)
+                if hasBirthday {
+                    DatePicker("生日", selection: $date, displayedComponents: [.date])
+                }
+                Text("生日当天与前一天会提醒全家；提醒只看月和日")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .navigationTitle("\(member.name) 的生日")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        member.birthday = hasBirthday ? date : nil
+                        try? context.save()
+                        Haptics.success()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+            }
+            .onAppear {
+                if let bd = member.birthday {
+                    date = bd
+                    hasBirthday = true
+                }
+            }
         }
     }
 }

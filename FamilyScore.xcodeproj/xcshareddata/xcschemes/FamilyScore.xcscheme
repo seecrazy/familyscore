@@ -39,6 +39,16 @@
                ReferencedContainer = "container:FamilyScore.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "3A0000000000000000000004"
+               BuildableName = "FamilyScoreUITests.xctest"
+               BlueprintName = "FamilyScoreUITests"
+               ReferencedContainer = "container:FamilyScore.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

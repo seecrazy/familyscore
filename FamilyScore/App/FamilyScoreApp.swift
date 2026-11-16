@@ -4,6 +4,7 @@ import SwiftData
 @main
 struct FamilyScoreApp: App {
     let container: ModelContainer
+    @StateObject private var app = AppEnvironment()
 
     init() {
         do {
@@ -19,6 +20,7 @@ struct FamilyScoreApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environmentObject(app)
         }
         .modelContainer(container)
     }

@@ -21,7 +21,7 @@ enum RewardService {
 
     @discardableResult
     static func redeem(member: Member, family: Family, reward: Reward,
-                       at date: Date = .now, context: ModelContext) throws -> Redemption {
+                       at date: Date = .now, context: ModelContext, autosave: Bool = true) throws -> Redemption {
         guard reward.isActive else { throw RewardError.inactive }
         guard reward.stock != 0 else { throw RewardError.outOfStock }
         let cost = reward.effectiveCost(at: date)
@@ -40,7 +40,7 @@ enum RewardService {
         if reward.stock > 0 { reward.stock -= 1 }
         AuditService.log(familyID: family.id, actorID: member.id, action: .redeem,
                          targetID: redemption.id, reason: reward.title, context: context)
-        try context.save()
+        if autosave { try context.save() }
         return redemption
     }
 

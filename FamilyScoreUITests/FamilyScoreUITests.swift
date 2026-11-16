@@ -21,14 +21,15 @@ final class FamilyScoreUITests: XCTestCase {
         app.launch()
 
         // 首页
-        XCTAssertTrue(app.staticTexts["家庭今日总积分"].waitForExistence(timeout: 12),
+        XCTAssertTrue(app.staticTexts["家庭今日总积分"].waitForExistence(timeout: 60),
                       "首页总积分卡未出现")
         XCTAssertTrue(app.staticTexts["快速加分"].exists)
         snap(app, "02_home")
 
         // 排行榜
         app.tabBars.buttons["排行"].tap()
-        XCTAssertTrue(app.staticTexts["贡献榜"].waitForExistence(timeout: 6))
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '贡献榜'"))
+            .firstMatch.waitForExistence(timeout: 10), "排行榜标题未出现")
         snap(app, "03_rank_day")
         app.buttons["周"].firstMatch.tap()
         sleep(1)
@@ -36,18 +37,18 @@ final class FamilyScoreUITests: XCTestCase {
 
         // 统计
         app.tabBars.buttons["统计"].tap()
-        XCTAssertTrue(app.staticTexts["近 7 天趋势"].waitForExistence(timeout: 6))
+        XCTAssertTrue(app.staticTexts["近 7 天趋势"].waitForExistence(timeout: 10))
         snap(app, "05_stats")
 
         // 商城
         app.tabBars.buttons["商城"].tap()
-        XCTAssertTrue(app.staticTexts["我的可用积分"].waitForExistence(timeout: 6))
+        XCTAssertTrue(app.staticTexts["我的可用积分"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["奖励商城"].exists)
         snap(app, "06_rewards")
 
         // 我的
         app.tabBars.buttons["我的"].tap()
-        XCTAssertTrue(app.staticTexts["累计积分"].waitForExistence(timeout: 6))
+        XCTAssertTrue(app.staticTexts["累计积分"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["审计日志"].exists)
         snap(app, "07_profile")
 

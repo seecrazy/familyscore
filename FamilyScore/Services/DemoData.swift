@@ -77,7 +77,7 @@ enum DemoData {
                         member: member, family: family, rule: rule, note: demoNote,
                         at: at, actorIsAdmin: true, approver: member.role == .admin ? member.id : mom.id,
                         forceRepeated: true, // 演示数据跳过重复窗口
-                        context: context)
+                        context: context, autosave: false)
                     family.settingsData.doublePointsMultiplier = savedMultiplier
                 }
             }
@@ -100,11 +100,13 @@ enum DemoData {
         let rewards = FamilyService.rewards(of: family, context: context)
         if let chorePass = rewards.first(where: { $0.title.contains("免做") }) {
             _ = try? RewardService.redeem(member: ming, family: family, reward: chorePass,
-                                          at: now.addingTimeInterval(-86400), context: context)
+                                          at: now.addingTimeInterval(-86400), context: context,
+                                          autosave: false)
         }
         if let ice = rewards.first(where: { $0.title.contains("冰淇淋") }) {
             _ = try? RewardService.redeem(member: didi, family: family, reward: ice,
-                                          at: now.addingTimeInterval(-3600), context: context)
+                                          at: now.addingTimeInterval(-3600), context: context,
+                                          autosave: false)
         }
 
         // 心愿单

@@ -50,7 +50,7 @@ enum ScoreEngine {
         note: String? = nil, proofHash: String? = nil,
         at date: Date = .now, actorIsAdmin: Bool,
         approver: UUID? = nil, forceRepeated: Bool = false,
-        context: ModelContext
+        context: ModelContext, autosave: Bool = true
     ) throws -> SubmitOutcome {
         guard rule.isActive else { throw ScoreEngineError.ruleInactive }
         guard rule.familyID == family.id, member.familyID == family.id else {
@@ -126,7 +126,7 @@ enum ScoreEngine {
             return .pendingApproval(record)
         }
 
-        try apply(record: record, to: member, family: family, context: context)
+        try apply(record: record, to: member, family: family, context: context, autosave: autosave)
         AuditService.log(familyID: family.id, actorID: approver ?? member.id,
                          action: points >= 0 ? .add : .deduct, targetID: record.id,
                          reason: rule.name, context: context)
@@ -203,7 +203,8 @@ enum ScoreEngine {
 
     /// 将一条 approved 记录的分数效果落到成员快照与积分批次上。
     /// 正向：累计 +，可用 +，批次 +；负向：累计不变，可用 −，扣最早批次（FIFO）。
-    static func apply(record: ScoreRecord, to member: Member, family: Family, context: ModelContext) throws {
+    static func apply(record: ScoreRecord, to member: Member, family: Family,
+                      context: ModelContext, autosave: Bool = true) throws {
         if record.points >= 0 {
             if !record.isReversal {
                 // 真实行为分：累计 + streak；撤销减分的反向记录只恢复可用分，不算"获得"
@@ -220,7 +221,7 @@ enum ScoreEngine {
             }
             deductLots(memberID: member.id, points: -record.points, context: context)
         }
-        try context.save()
+        if autosave { try context.save() }
     }
 
     // MARK: 连续打卡（§6.1）

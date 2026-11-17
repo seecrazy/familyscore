@@ -92,6 +92,15 @@ enum DemoData {
         let trashRule = rules.first { $0.name == "倒垃圾" }
         let readRule = rules.first { $0.name == "阅读 30 分钟" }
         let todayKey = FamilyCalendar.dayKey(now, timezoneID: family.timezoneID)
+        // v3.2：一条昨天过期未完成的指派（首页过期卡片 + 家长减分入口演示）
+        if let petRule = rules.first(where: { $0.name == "遛宠物" }) {
+            let yesterdayKey = FamilyCalendar.dayKey(now.addingTimeInterval(-86400),
+                                                     timezoneID: family.timezoneID)
+            let a = TaskAssignment(familyID: family.id, ruleID: petRule.id,
+                                   assigneeID: didi.id, assignerID: mom.id, dueDay: yesterdayKey)
+            context.insert(a)
+            a.status = .expired
+        }
         if let t = trashRule {
             context.insert(TaskAssignment(familyID: family.id, ruleID: t.id,
                                           assigneeID: didi.id, assignerID: mom.id, dueDay: todayKey))

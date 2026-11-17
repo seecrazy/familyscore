@@ -45,6 +45,7 @@ struct HomeView: View {
                             approvalsSection(s)
                         }
                         quickSection(s, family: family)
+                        if !expiredItems.isEmpty { expiredSection }
                         todoSection(s)
                         feedSection(s)
                     }
@@ -58,7 +59,9 @@ struct HomeView: View {
             .background(Theme.appBackground)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { switchButton } }
             .sheet(item: $sheetRule) { rule in
-                ConfirmSheet(rule: rule, member: me ?? Member(familyID: UUID(), name: "", emoji: "🙂", role: .child),
+                ConfirmSheet(rule: rule,
+                             member: (deductTarget.flatMap { targetMember($0.assigneeName) })
+                                 ?? me ?? Member(familyID: UUID(), name: "", emoji: "🙂", role: .child),
                              family: family ?? Family(name: "", ownerID: UUID())) { result in
                     toast = result
                     if result.hasPrefix("+") { app.celebrate() }
@@ -98,12 +101,19 @@ struct HomeView: View {
         NotificationService.requestAuthorization()
         NotificationService.reschedule(family: f, members: members, context: context)
         LocationService.shared.startMonitoring(family: f)
+        // 指派任务过期结算（v3.2：open→expired，不自动减分）
+        TaskService.settleExpired(family: f, context: context)
+        expiredItems = TaskService.expiredRecently(
+            family: f, rules: allRules.filter { $0.familyID == f.id }, members: members,
+            context: context)
         // 锁屏一键打卡队列结算 + Widget 摘要刷新（§14.2）
         if let me {
             WidgetSyncService.consumeQueue(me: me, family: f, context: context)
             WidgetSyncService.refresh(family: f, me: me, context: context)
         }
     }
+
+    @State private var expiredItems: [TaskService.ExpiredItem] = []
 
     /// 到家提醒：有未完成待办才发（§18.4 地理触发）
     private func fireArrivalReminder() {
@@ -229,6 +239,62 @@ struct HomeView: View {
             }
         }
     }
+
+    // MARK: 过期任务（v3.2：不追杀、不自动减分；家长可选发起人工确认）
+    private var expiredSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("近期过期（\(expiredItems.count)）", systemImage: "clock.badge.exclamationmark")
+                .font(.headline)
+            ForEach(expiredItems.prefix(3)) { item in
+                HStack(spacing: 10) {
+                    Text(item.assigneeEmoji)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(item.assigneeName) 的「\(item.ruleName)」")
+                            .font(.subheadline.weight(.medium))
+                        Text("截止 \(String(item.dueDay.suffix(5))) · 未完成")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if me?.role == .admin, let rule = unfulfilledRule {
+                        Button {
+                            Haptics.warning()
+                            deductTarget = item
+                            sheetRule = rule
+                        } label: {
+                            Text("发起减分")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Theme.deductRed)
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(Theme.deductRed.opacity(0.1), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            if me?.role == .admin {
+                Text("过期不自动扣分；发起减分会走家长确认流程（未完成约定任务 −5）")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("过期就算啦，今天再打个卡一样加分 💛")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .scoreCard()
+    }
+
+    /// 「未完成约定任务」规则（发起减分用；家庭未配置则不显示按钮）
+    private var unfulfilledRule: Rule? {
+        guard let f = family else { return nil }
+        return allRules.first {
+            $0.familyID == f.id && $0.isDeduction && $0.name.contains("未完成")
+        }
+    }
+    @State private var deductTarget: TaskService.ExpiredItem?
 
     // MARK: 今日待办
 
@@ -356,6 +422,11 @@ struct HomeView: View {
     }
     @State private var proofFullscreen: UIImage?
     @State private var showProofFull = false
+
+    private func targetMember(_ name: String) -> Member? {
+        guard let f = family else { return nil }
+        return allMembers.first { $0.familyID == f.id && $0.name == name }
+    }
 
     private func ruleName(_ id: UUID?) -> String {
         guard let id else { return "记录" }

@@ -11,7 +11,8 @@ struct AssignmentSheet: View {
 
     @State private var assigneeID: UUID?
     @State private var ruleID: UUID?
-    @State private var dueDayOffset = 0   // 0=今天 1=明天
+    @State private var dueOption = TaskService.DueOption(label: "今天", daysFromNow: 0)
+    @State private var customDate: Date = .now
 
     private var family: Family? { app.currentFamily(in: context) }
     private var me: Member? { app.currentMember(in: context) }
@@ -72,13 +73,19 @@ struct AssignmentSheet: View {
                         }
                     }
                 }
-                Section("截止") {
-                    Picker("截止", selection: $dueDayOffset) {
-                        Text("今天").tag(0)
-                        Text("明天").tag(1)
+                Section("截止时间") {
+                    Picker(selection: $dueOption) {
+                        ForEach(TaskService.dueOptions(timezoneID: family?.timezoneID ?? "UTC")) { opt in
+                            Text(opt.label).tag(opt)
+                        }
+                    } label: { Text("截止") }
+                    .pickerStyle(.menu)
+                    if dueOption.daysFromNow == nil {
+                        DatePicker("选择日期", selection: $customDate,
+                                   in: Calendar.current.startOfDay(for: .now)...,
+                                   displayedComponents: [.date])
                     }
-                    .pickerStyle(.segmented)
-                    Text("未完成不自动减分，避免待办焦虑；可在审批时选择发起「未完成约定任务」")
+                    Text("过截止未完成 → 任务标记过期（不自动减分）；家长可在首页过期卡片选择发起「未完成约定任务 −5」人工确认")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -101,9 +108,8 @@ struct AssignmentSheet: View {
     private func assign() {
         guard let f = family, let me, let assigneeID, let ruleID,
               let rule = positiveRules.first(where: { $0.id == ruleID }) else { return }
-        let dueDate = FamilyCalendar.calendar(timezoneID: f.timezoneID)
-            .date(byAdding: .day, value: dueDayOffset, to: .now) ?? .now
-        let dueKey = FamilyCalendar.dayKey(dueDate, timezoneID: f.timezoneID)
+        let dueKey = TaskService.dueDayKey(for: dueOption, customDate: customDate,
+                                           timezoneID: f.timezoneID)
         context.insert(TaskAssignment(familyID: f.id, ruleID: rule.id,
                                       assigneeID: assigneeID, assignerID: me.id, dueDay: dueKey))
         AuditService.log(familyID: f.id, actorID: me.id, action: .config, targetID: rule.id,

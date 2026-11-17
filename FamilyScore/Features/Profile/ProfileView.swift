@@ -17,6 +17,7 @@ struct ProfileView: View {
     @State private var showRewardAdmin = false
     @State private var showNotifSettings = false
     @State private var showExport = false
+    @State private var showCloudSync = false
 
     private var family: Family? { app.currentFamily(in: context) }
     private var me: Member? { app.currentMember(in: context) }
@@ -43,6 +44,7 @@ struct ProfileView: View {
             .sheet(isPresented: $showRewardAdmin) { RewardAdminSheet() }
             .sheet(isPresented: $showNotifSettings) { NotificationSettingsSheet() }
             .sheet(isPresented: $showExport) { ExportSheet() }
+            .sheet(isPresented: $showCloudSync) { CloudSyncSheet() }
         }
     }
 
@@ -119,6 +121,7 @@ struct ProfileView: View {
             row("list.bullet.rectangle.portrait", "积分规则配置") { showRules = true }
             row("gift.fill", "奖励商城管理") { showRewardAdmin = true }
             row("shield.lefthalf.filled", "审计日志") { showAudit = true }
+            row("icloud.and.arrow.up", "云同步") { showCloudSync = true }
             row("qrcode", "兑换核销") { showRedeemAdmin = true }
         }
     }

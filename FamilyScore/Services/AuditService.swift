@@ -8,6 +8,8 @@ enum AuditService {
                     reason: String? = nil, context: ModelContext) {
         context.insert(AuditLog(familyID: familyID, actorID: actorID, action: action,
                                 targetID: targetID, reason: reason))
+        // 变更记账（云同步队列，§18.3）——审计打点处即变更处，一处覆盖全部
+        SyncEngine.record(familyID: familyID, action: action, targetID: targetID, context: context)
     }
 
     static func logs(familyID: UUID, limit: Int = 200, context: ModelContext) -> [AuditLog] {

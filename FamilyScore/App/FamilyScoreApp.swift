@@ -10,7 +10,7 @@ struct FamilyScoreApp: App {
         let schema = Schema([
             Family.self, Member.self, Rule.self, ScoreRecord.self, Reward.self,
             Redemption.self, AuditLog.self, Badge.self, RankSnapshot.self,
-            TaskAssignment.self, WishListItem.self, ScoreLot.self,
+            TaskAssignment.self, WishListItem.self, ScoreLot.self, ChangeLog.self,
         ])
         let config = ModelConfiguration(schema: schema)
         do {

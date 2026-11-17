@@ -68,7 +68,7 @@ enum RuleTemplateService {
 
     /// 有老人家庭附加包（§6.5）
     static let elderRules: [Draft] = [
-        .init(category: .emotion, name: "陪伴老人 30 分钟", icon: "figure.2.and.child.holding.hands", points: 8, dailyLimit: 2, requiresApproval: false),
+        .init(category: .emotion, name: "陪伴老人 30 分钟", icon: "person.wave.2.fill", points: 8, dailyLimit: 2, requiresApproval: false),
         .init(category: .health, name: "体检/看牙医", icon: "stethoscope", points: 8, dailyLimit: 0, requiresApproval: true),
         .init(category: .chore, name: "帮老人取快递/买菜", icon: "bag", points: 5, dailyLimit: 2, requiresApproval: false),
         .init(category: .emotion, name: "教长辈用手机", icon: "iphone", points: 6, dailyLimit: 1, requiresApproval: false),

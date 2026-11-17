@@ -167,9 +167,11 @@ struct TaskRowView: View {
     }
 }
 
-/// 家庭动态行
+/// 家庭动态行（含凭证缩略图，点击全屏回看）
 struct FeedRowView: View {
     let item: HomeSummary.FeedItem
+    var onShowProof: ((Data) -> Void)? = nil
+
     var body: some View {
         HStack(spacing: 10) {
             Text(item.member.emoji).font(.subheadline)
@@ -182,6 +184,28 @@ struct FeedRowView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            if let data = item.proofImageData {
+                Button {
+                    Haptics.light()
+                    onShowProof?(data)
+                } label: {
+                    if let img = UIImage(data: data) {
+                        Image(uiImage: img)
+                            .resizable().scaledToFill()
+                            .frame(width: 30, height: 30)
+                            .clipShape(RoundedRectangle(cornerRadius: 7))
+                            .overlay(alignment: .bottomTrailing) {
+                                Image(systemName: "camera.badge.ellipsis")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.white)
+                                    .padding(1)
+                                    .background(.black.opacity(0.45), in: Circle())
+                            }
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("查看凭证")
+            }
             Text(item.points >= 0 ? "+\(item.points)" : "\(item.points)")
                 .font(.caption.weight(.bold).monospacedDigit())
                 .foregroundStyle(item.points >= 0 ? Theme.addGreen : Theme.deductRed)

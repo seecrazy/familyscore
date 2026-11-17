@@ -273,7 +273,9 @@ struct HomeView: View {
             Label("家庭动态", systemImage: "bubble.left.and.bubble.right.fill")
                 .font(.headline)
             ForEach(s.feed) { item in
-                FeedRowView(item: item)
+                FeedRowView(item: item) { data in
+                    if let img = UIImage(data: data) { proofFullscreen = img }
+                }
             }
         }
         .padding(16)

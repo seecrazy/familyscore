@@ -206,3 +206,24 @@ final class ReviewFlowTests: XCTestCase {
         _ = family; _ = members
     }
 }
+
+// MARK: v3.1 凭证回看：家庭动态携带凭证数据
+extension ReviewFlowTests {
+    func testFeedCarriesProofImage() throws {
+        let f = TestDB.makeFamily(context: context)
+        let rule = TestDB.makeRule(f.family, points: 5, name: "洗碗")
+        context.insert(rule)
+        // TestDB 默认免评审 → 直接入账，进家庭动态
+        _ = try ScoreEngine.submit(member: f.child, family: f.family, rule: rule,
+                                   proofImageData: DemoData.sampleProofImage(),
+                                   at: .testNow, actorIsAdmin: false, context: context)
+        let summary = HomeSummary.compute(
+            family: f.family, me: f.mom,
+            members: [f.dad, f.mom, f.child],
+            rules: [rule], records: try context.fetch(FetchDescriptor<ScoreRecord>()),
+            assignments: [], now: .testNow, context: context)
+        let item = summary.feed.first { $0.member.id == f.child.id }
+        XCTAssertNotNil(item?.proofImageData, "家庭动态应携带凭证供回看")
+        XCTAssertNotNil(UIImage(data: item!.proofImageData!))
+    }
+}

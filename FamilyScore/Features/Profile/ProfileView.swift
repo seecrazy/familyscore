@@ -550,26 +550,54 @@ struct AuditLogSheet: View {
                 }
                 Section("操作记录") {
                     ForEach(logs.prefix(60)) { log in
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack {
-                                Text("\(memberNames[log.actorID] ?? "成员") · \(actionLabel(log.action))")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(Theme.primary)
-                                Spacer()
-                                Text(log.createdAt, format: .dateTime.month().day().hour().minute())
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            if let reason = log.reason {
-                                Text(reason).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
+                        auditRow(log)
                     }
                 }
             }
             .navigationTitle("审计日志")
             .navigationBarTitleDisplayMode(.inline)
         }
+    }
+
+    /// 审计行：加分/评审类操作可查看当时的打卡凭证
+    @ViewBuilder
+    private func auditRow(_ log: AuditLog) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 8) {
+                Text("\(memberNames[log.actorID] ?? "成员") · \(actionLabel(log.action))")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.primary)
+                Spacer()
+                if let data = proofData(for: log), let img = UIImage(data: data) {
+                    Button {
+                        proofFullscreen = img
+                    } label: {
+                        Image(uiImage: img)
+                            .resizable().scaledToFill()
+                            .frame(width: 30, height: 30)
+                            .clipShape(RoundedRectangle(cornerRadius: 7))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("查看凭证")
+                }
+                Text(log.createdAt, format: .dateTime.month().day().hour().minute())
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            if let reason = log.reason {
+                Text(reason).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @State private var proofFullscreen: UIImage?
+
+    private func proofData(for log: AuditLog) -> Data? {
+        guard log.action == .add || log.action == .approve || log.action == .deduct else { return nil }
+        let tid = log.targetID
+        guard let rec = (try? context.fetch(FetchDescriptor<ScoreRecord>(
+            predicate: #Predicate { $0.id == tid })))?.first else { return nil }
+        return rec.proofImageData
     }
 
     private func actionLabel(_ a: AuditAction) -> String {

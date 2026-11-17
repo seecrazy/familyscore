@@ -96,6 +96,7 @@
 				3A0000000000000000000102 /* FamilyScoreTests */,
 				3A0000000000000000000103 /* FamilyScoreUITests */,
 				3A0000000000000000000400 /* Products */,
+				A57C4EB230AC801D00189B14 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -105,9 +106,17 @@
 				3A0000000000000000000401 /* FamilyScore.app */,
 				3A0000000000000000000402 /* FamilyScoreTests.xctest */,
 				3A0000000000000000000403 /* FamilyScoreUITests.xctest */,
-				3A0000000000000000000404 /* FamilyScoreWidget.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A57C4EB230AC801D00189B14 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				3A0000000000000000000104 /* WidgetShared */,
+				3A0000000000000000000105 /* FamilyScoreWidget */,
+			);
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -120,7 +129,6 @@
 				3A0000000000000000000301 /* Sources */,
 				3A0000000000000000000302 /* Frameworks */,
 				3A0000000000000000000303 /* Resources */,
-				3A0000000000000000000310 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
@@ -188,23 +196,19 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3A0000000000000000000204 /* Build configuration list for PBXNativeTarget "FamilyScoreWidget" */;
 			buildPhases = (
-				3A0000000000000000000311 /* Sources */,
-				3A0000000000000000000312 /* Frameworks */,
-				3A0000000000000000000313 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				3A0000000000000000000105 /* FamilyScoreWidget */,
 				3A0000000000000000000104 /* WidgetShared */,
+				3A0000000000000000000105 /* FamilyScoreWidget */,
 			);
 			name = FamilyScoreWidget;
 			packageProductDependencies = (
 			);
 			productName = FamilyScoreWidget;
-			productReference = 3A0000000000000000000404 /* FamilyScoreWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -502,6 +506,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DFB7P62Y8F;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0.0;
@@ -520,6 +525,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DFB7P62Y8F;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0.0;
@@ -537,6 +543,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DFB7P62Y8F;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0.0;
@@ -554,6 +561,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DFB7P62Y8F;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0.0;
@@ -572,6 +580,7 @@
 				CODE_SIGN_ENTITLEMENTS = FamilyScoreWidget/FamilyScoreWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DFB7P62Y8F;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = FamilyScoreWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -592,6 +601,7 @@
 				CODE_SIGN_ENTITLEMENTS = FamilyScoreWidget/FamilyScoreWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DFB7P62Y8F;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = FamilyScoreWidget/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

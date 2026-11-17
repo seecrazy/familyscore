@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import UIKit
 
 /// 体验模式：演示家庭"王家"五口人 × 30 天历史（§19.1 冷启动体验模式）
 /// 确定性随机（固定种子），保证每次生成的数据一致，便于演示与测试。
@@ -118,11 +119,13 @@ enum DemoData {
             context.insert(WishListItem(memberID: ming.id, rewardID: money.id))
         }
 
-        // 小明以儿童身份刚提交的洗碗记录（带"凭证"备注）→ 妈妈首页可见待评审
+        // 小明以儿童身份刚提交的洗碗记录（带拍照凭证）→ 妈妈首页可见待评审、动态可回看
         if let dish = rules.first(where: { $0.name == "洗碗" }) {
             _ = try? ScoreEngine.submit(
                 member: ming, family: family, rule: dish,
-                note: "晚饭的碗我来洗", at: now.addingTimeInterval(-1800),
+                note: "晚饭的碗我来洗",
+                proofImageData: DemoData.sampleProofImage(),
+                at: now.addingTimeInterval(-1800),
                 actorIsAdmin: false, approver: nil, context: context)
         }
 
@@ -132,5 +135,21 @@ enum DemoData {
 
         try? context.save()
         return (family, members)
+    }
+
+    /// 演示凭证图：浅橙底 + 白碗简笔（UIGraphics 绘制，确定性）
+    static func sampleProofImage() -> Data? {
+        let size = CGSize(width: 480, height: 640)
+        let r = UIGraphicsImageRenderer(size: size)
+        let img = r.image { ctx in
+            UIColor(red: 1.00, green: 0.93, blue: 0.86, alpha: 1).setFill()
+            ctx.cgContext.fill(CGRect(origin: .zero, size: size))
+            UIColor.white.setFill()
+            ctx.cgContext.fillEllipse(in: CGRect(x: 140, y: 250, width: 200, height: 120))
+            ctx.cgContext.fill(CGRect(x: 190, y: 220, width: 100, height: 40))
+            UIColor(red: 1.00, green: 0.54, blue: 0.24, alpha: 1).setFill()
+            ctx.cgContext.fill(CGRect(x: 60, y: 460, width: 360, height: 70))
+        }
+        return img.jpegData(compressionQuality: 0.85)
     }
 }

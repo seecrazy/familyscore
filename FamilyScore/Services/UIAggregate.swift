@@ -29,6 +29,7 @@ struct HomeSummary {
         let text: String
         let points: Int
         let time: Date
+        var proofImageData: Data?   // 打卡凭证（点击全屏回看，v3.1）
     }
 
     static func compute(family: Family, me: Member, members: [Member],
@@ -105,7 +106,8 @@ struct HomeSummary {
             guard let m = byID[r.memberID] else { return nil }
             let ruleName = r.ruleID.flatMap { rulesByID[$0]?.name } ?? (r.note ?? "记录")
             return FeedItem(id: r.id, member: m,
-                            text: ruleName, points: r.points, time: r.createdAt)
+                            text: ruleName, points: r.points, time: r.createdAt,
+                            proofImageData: r.proofImageData)
         }
 
         return HomeSummary(

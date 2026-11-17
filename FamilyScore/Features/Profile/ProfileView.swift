@@ -16,6 +16,7 @@ struct ProfileView: View {
     @State private var showRedeemAdmin = false
     @State private var showRewardAdmin = false
     @State private var showNotifSettings = false
+    @State private var showExport = false
 
     private var family: Family? { app.currentFamily(in: context) }
     private var me: Member? { app.currentMember(in: context) }
@@ -41,6 +42,7 @@ struct ProfileView: View {
             .sheet(isPresented: $showRedeemAdmin) { AdminRedeemSheet() }
             .sheet(isPresented: $showRewardAdmin) { RewardAdminSheet() }
             .sheet(isPresented: $showNotifSettings) { NotificationSettingsSheet() }
+            .sheet(isPresented: $showExport) { ExportSheet() }
         }
     }
 
@@ -128,6 +130,9 @@ struct ProfileView: View {
             }
             row("bell.badge", "通知设置") {
                 showNotifSettings = true
+            }
+            row("square.and.arrow.up.on.square", "数据导出 / 导入") {
+                showExport = true
             }
         }
     }

@@ -10,6 +10,7 @@ struct NotificationSettings: Codable, Equatable {
     var weekly = true
     var streakProtect = true
     var goalReached = true
+    var geoTodo = true               // 到家提醒（§18.4 地理触发）
     /// 免打扰起止（一天内分钟数；起始 1320=22:00，结束 420=07:00，允许跨午夜）
     var quietStartMinutes = 22 * 60
     var quietEndMinutes = 7 * 60

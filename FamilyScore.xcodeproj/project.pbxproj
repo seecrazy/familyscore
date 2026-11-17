@@ -380,6 +380,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEYNSCameraUsageDescription = "拍摄任务完成凭证，供家长评审";
+				INFOPLIST_KEYNSLocationWhenInUseUsageDescription = "到家时提醒未完成的待办；坐标只存在本机";
 				INFOPLIST_KEYUIApplicationLaunchScreen_Generation = YES;
 				INFOPLIST_KEYUIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEYUIApplicationSupportsIndirectInputEvents = YES;
@@ -416,6 +417,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEYNSCameraUsageDescription = "拍摄任务完成凭证，供家长评审";
+				INFOPLIST_KEYNSLocationWhenInUseUsageDescription = "到家时提醒未完成的待办；坐标只存在本机";
 				INFOPLIST_KEYUIApplicationLaunchScreen_Generation = YES;
 				INFOPLIST_KEYUIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEYUIApplicationSupportsIndirectInputEvents = YES;

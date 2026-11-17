@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 /// 首页（§8.1）
 struct HomeView: View {
@@ -76,6 +77,9 @@ struct HomeView: View {
                 Button("取消", role: .cancel) {}
             }
             .onAppear(perform: refreshBirthdayAndNotifications)
+            .onReceive(NotificationCenter.default.publisher(for: .fsArrivedHome)) { _ in
+                fireArrivalReminder()
+            }
             .fullScreenCover(isPresented: Binding(get: { proofFullscreen != nil },
                                                   set: { if !$0 { proofFullscreen = nil } })) {
                 if let img = proofFullscreen {
@@ -93,6 +97,26 @@ struct HomeView: View {
         birthdayList = BirthdayService.upcoming(members: members, family: f)
         NotificationService.requestAuthorization()
         NotificationService.reschedule(family: f, members: members, context: context)
+        LocationService.shared.startMonitoring(family: f)
+    }
+
+    /// 到家提醒：有未完成待办才发（§18.4 地理触发）
+    private func fireArrivalReminder() {
+        guard let f = family, let s = summary else { return }
+        let settings = NotificationSettings.load()
+        guard let msg = GeoReminder.arrivalMessage(
+            openTodoCount: s.todayAssignments.filter { !$0.done }.count,
+            todoTitle: s.todayAssignments.first(where: { !$0.done })?.rule.name,
+            geoEnabled: settings.master && settings.geoTodo,
+            minutesSinceLastFire: 60,
+            lastFireDate: LocationService.shared.lastArrivalFire) else { return }
+        let content = UNMutableNotificationContent()
+        content.title = msg.title
+        content.body = msg.body
+        content.sound = .default
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: "fs-geo-\(UUID().uuidString)", content: content, trigger: trigger))
     }
 
     private func header(family: Family) -> some View {

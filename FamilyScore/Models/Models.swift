@@ -30,6 +30,8 @@ final class Family {
     var timezoneID: String            // 家庭主时区，排名计算基准（§5.2）
     var settingsData: FamilySettings  // 全局设置（Codable 结构体存储）
     var isDemo: Bool                  // 体验模式家庭
+    var homeLat: Double?              // 家的坐标（到家提醒，§18.4/§14.2）
+    var homeLon: Double?
 
     init(name: String, ownerID: UUID, timezoneID: String = TimeZone.current.identifier,
          settings: FamilySettings = FamilySettings(), isDemo: Bool = false, createdAt: Date = .now) {

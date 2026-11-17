@@ -3,8 +3,11 @@ import SwiftUI
 /// 通知设置（§18.4：总开关 + 分类开关 + 免打扰时段）
 struct NotificationSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var app: AppEnvironment
+    @Environment(\.modelContext) private var context
     @State private var settings = NotificationSettings.load()
     @State private var saved = false
+    @State private var geoResult: String?
 
     var body: some View {
         NavigationStack {
@@ -15,6 +18,32 @@ struct NotificationSettingsSheet: View {
                     Text("关闭总开关后所有提醒静音；各分类可独立开关")
                 }
                 // （footer 组合写法统一为 content-first，见下方各 Section）
+                Section {
+                    row("到家提醒", "进入家附近 100 米且有未完成待办时提醒（1 小时冷却）", $settings.geoTodo)
+                    if let f = app.currentFamily(in: context) {
+                        HStack {
+                            Button {
+                                LocationService.shared.setHomeToCurrent(family: f) { ok in
+                                    geoResult = ok ? "✅ 已把当前位置设为家" : "❌ 定位失败，请检查定位权限"
+                                    if ok { try? context.save() }
+                                }
+                            } label: {
+                                Label("把当前位置设为「家」", systemImage: "mappin.and.ellipse")
+                            }
+                        }
+                        if GeoReminder.hasHome(f) {
+                            Label("已设置家的位置（到家提醒生效中）", systemImage: "checkmark.circle")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if let r = geoResult {
+                            Text(r).font(.caption).foregroundStyle(Theme.primary)
+                        }
+                    }
+                } header: {
+                    Text("地理提醒")
+                } footer: {
+                    Text("需要「使用期间」定位权限；坐标只存在本机，不上传")
+                }
                 Section("提醒类型") {
                     row("待办汇总", "每天 19:00，还有未完成待办时提醒", $settings.todo)
                     row("生日提醒", "生日当天与前一天早上 9:00", $settings.birthday)

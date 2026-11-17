@@ -127,3 +127,36 @@ extension MemberAdminTests {
         }
     }
 }
+
+// MARK: v3.7 奖励删除（账本保护）
+extension MemberAdminTests {
+    func testDeleteUncashedRewardIncludingPreset() throws {
+        let f = TestDB.makeFamily(context: context)
+        // 预置奖励（无人兑换）→ 可删
+        let preset = Reward(familyID: f.family.id, title: "选今晚的电影", icon: "film", cost: 150)
+        context.insert(preset)
+        // 心愿单引用一并清理
+        context.insert(WishListItem(memberID: f.child.id, rewardID: preset.id))
+        XCTAssertEqual(RewardService.deleteIfUncashed(preset, context: context), .deleted)
+        let rid = preset.id
+        XCTAssertTrue(((try? context.fetch(FetchDescriptor<Reward>(
+            predicate: #Predicate { $0.id == rid }))) ?? []).isEmpty)
+        XCTAssertTrue(((try? context.fetch(FetchDescriptor<WishListItem>(
+            predicate: #Predicate { $0.rewardID == rid }))) ?? []).isEmpty, "心愿单引用应清理")
+    }
+
+    func testDeleteBlockedWhenRedeemed() throws {
+        let f = TestDB.makeFamily(context: context)
+        let reward = Reward(familyID: f.family.id, title: "冰淇淋一个", icon: "birthday.cake", cost: 80)
+        context.insert(reward)
+        let redemption = Redemption(rewardID: reward.id, memberID: f.child.id,
+                                     familyID: f.family.id, cost: 80, code: "FS-AAAA-BBBB")
+        context.insert(redemption)
+        if case .blockedHasRedemptions(let n) = RewardService.deleteIfUncashed(reward, context: context) {
+            XCTAssertEqual(n, 1)
+        } else { XCTFail("有兑换记录应拒绝删除") }
+        let rid = reward.id
+        XCTAssertEqual(((try? context.fetch(FetchDescriptor<Reward>(
+            predicate: #Predicate { $0.id == rid }))) ?? []).count, 1, "奖励应保留")
+    }
+}

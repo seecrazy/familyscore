@@ -47,6 +47,32 @@ enum RewardService {
         try? context.save()
     }
 
+    enum RewardDeleteResult: Equatable {
+        case deleted
+        case blockedHasRedemptions(count: Int)  // 有兑换记录 → 只能下架，保账本
+    }
+
+    /// 删除奖励：仅允许删除「从未被兑换过」的（预置奖励没人兑过即可直接删）；
+    /// 有兑换记录的一律拒绝——兑换历史 append-only。同时清理心愿单引用。
+    @discardableResult
+    static func deleteIfUncashed(_ reward: Reward, context: ModelContext) -> RewardDeleteResult {
+        let rid = reward.id
+        let redemptions = (try? context.fetch(FetchDescriptor<Redemption>(
+            predicate: #Predicate { $0.rewardID == rid }))) ?? []
+        guard redemptions.isEmpty else { return .blockedHasRedemptions(count: redemptions.count) }
+
+        // 心愿单引用清理（无账本价值）
+        let wishes = (try? context.fetch(FetchDescriptor<WishListItem>(
+            predicate: #Predicate { $0.rewardID == rid }))) ?? []
+        for w in wishes { context.delete(w) }
+
+        AuditService.log(familyID: reward.familyID, actorID: reward.familyID, action: .config,
+                         targetID: reward.id, reason: "删除奖励「\(reward.title)」(从未兑换)", context: context)
+        context.delete(reward)
+        try? context.save()
+        return .deleted
+    }
+
     // MARK: 兑换
 
     @discardableResult

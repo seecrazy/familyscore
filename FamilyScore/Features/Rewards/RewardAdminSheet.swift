@@ -117,6 +117,7 @@ struct RewardEditSheet: View {
     @State private var discountDays = 3
     @State private var isActive = true
     @State private var duplicate: Reward?   // 同名已有奖励（含下架）
+    @State private var confirmDelete = false
 
     struct IconDef: Identifiable, Hashable {
         let symbol: String
@@ -268,6 +269,20 @@ struct RewardEditSheet: View {
                 Section {
                     Toggle("上架中（保存后立即出现在商城）", isOn: $isActive)
                 }
+                if let r = reward {
+                    Section {
+                        Button(role: .destructive) { confirmDelete = true } label: {
+                            Label(redemptionCount(of: r) > 0
+                                  ? "删除（已有兑换记录，不可删）" : "删除该奖励",
+                                  systemImage: "trash")
+                        }
+                        .disabled(redemptionCount(of: r) > 0)
+                    } footer: {
+                        Text(redemptionCount(of: r) > 0
+                             ? "已有 \(redemptionCount(of: r)) 次兑换记录，删除会破坏全家账本——用「上架中」开关下架即可隐藏"
+                             : "从未被兑换过的奖励可直接删除（预置奖励也可以）；兑换过的只能下架")
+                    }
+                }
             }
             .navigationTitle(reward == nil ? "新奖励" : "编辑奖励")
             .navigationBarTitleDisplayMode(.inline)
@@ -278,6 +293,16 @@ struct RewardEditSheet: View {
                         .fontWeight(.semibold)
                         .disabled(hasDiscount && discountCost >= cost)
                 }
+            }
+            .confirmationDialog("确定删除「\(effectiveTitle)」？", isPresented: $confirmDelete,
+                                titleVisibility: .visible) {
+                Button("删除", role: .destructive) {
+                    if let r = reward, case .deleted = RewardService.deleteIfUncashed(r, context: context) {
+                        Haptics.success()
+                        dismiss()
+                    }
+                }
+                Button("取消", role: .cancel) {}
             }
             .onAppear {
                 guard let r = reward else { return }
@@ -292,6 +317,12 @@ struct RewardEditSheet: View {
                 }
             }
         }
+    }
+
+    private func redemptionCount(of r: Reward) -> Int {
+        let rid = r.id
+        return ((try? context.fetch(FetchDescriptor<Redemption>(
+            predicate: #Predicate { $0.rewardID == rid }))) ?? []).count
     }
 
     private var occupiedIcons: [String: String] {

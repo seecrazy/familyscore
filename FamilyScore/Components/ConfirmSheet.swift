@@ -14,10 +14,10 @@ struct ConfirmSheet: View {
     @State private var proofData: Data?
     @State private var showRepeatConfirm = false
     @State private var repeatError: ScoreEngineError?
-    @AppStorage("currentMemberID") private var currentMemberID: String = ""
+    @EnvironmentObject var app: AppEnvironment
 
     private var actorIsAdmin: Bool {
-        guard let id = UUID(uuidString: currentMemberID),
+        guard let id = app.currentMemberID,
               let me = ScoreEngine.fetchMember(id, context: context) else { return false }
         return me.role == .admin
     }

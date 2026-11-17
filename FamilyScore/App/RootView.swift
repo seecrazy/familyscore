@@ -6,26 +6,39 @@ import SwiftData
 struct RootView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @Environment(\.modelContext) private var context
-    @AppStorage("currentMemberID") private var currentMemberID: String = ""
+    @EnvironmentObject var app: AppEnvironment
+    @State private var consumedFreshFlag = false
 
     var body: some View {
-        if hasCompletedOnboarding {
-            RootTabView()
-                .transition(.opacity)
-        } else {
-            OnboardingView()
-                .transition(.opacity)
-                .onAppear { bootDemoIfNeeded() }
+        Group {
+            if !hasCompletedOnboarding {
+                OnboardingView()
+                    .transition(.opacity)
+            } else {
+                RootTabView()
+                    .transition(.opacity)
+            }
         }
+        .onAppear {
+            consumeFreshOnboardingFlagIfNeeded()
+            bootDemoIfNeeded()
+        }
+    }
+
+    /// -freshOnboarding：UI 测试辅助，一次性消费——本次启动进引导，之后正常流转
+    private func consumeFreshOnboardingFlagIfNeeded() {
+        guard ProcessInfo.processInfo.arguments.contains("-freshOnboarding"),
+              !consumedFreshFlag else { return }
+        consumedFreshFlag = true
+        hasCompletedOnboarding = false
     }
 
     private func bootDemoIfNeeded() {
         guard ProcessInfo.processInfo.arguments.contains("-demoBoot"),
               !hasCompletedOnboarding,
-              UUID(uuidString: currentMemberID) == nil || currentMemberID.isEmpty else { return }
-        let (family, members) = DemoData.build(context: context)
-        currentMemberID = members.first { $0.name == "妈妈" }?.id.uuidString
-            ?? members[0].id.uuidString
+              app.currentMemberID == nil else { return }
+        let (_, members) = DemoData.build(context: context)
+        app.currentMemberID = members.first { $0.name == "妈妈" }?.id ?? members[0].id
         hasCompletedOnboarding = true
     }
 }

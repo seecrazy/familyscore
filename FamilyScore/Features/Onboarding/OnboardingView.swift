@@ -14,7 +14,7 @@ struct OnboardingView: View {
     @State private var template: RuleTemplateService.TemplateKind = .three
     @State private var building = false
     @AppStorage("hasCompletedOnboarding") private var done = false
-    @AppStorage("currentMemberID") private var currentMemberID: String = ""
+    @EnvironmentObject var app: AppEnvironment
 
     private let roleEmojis: [MemberRole: [String]] = [
         .admin: ["👨", "👩"],
@@ -292,19 +292,19 @@ struct OnboardingView: View {
 
     private func createFamily() {
         building = true
-        let (family, owner) = FamilyService.createFamily(
+        let (_, owner) = FamilyService.createFamily(
             name: familyName, myName: myName, myRole: myRole, myEmoji: myEmoji,
             template: template, context: context)
-        currentMemberID = owner.id.uuidString
+        app.currentMemberID = owner.id
         building = false
         Haptics.success()
         withAnimation { step = 4 }
     }
 
     private func startDemo() {
-        let (family, members) = DemoData.build(context: context)
+        let (_, members) = DemoData.build(context: context)
         // 以妈妈身份体验（家长视角功能最全）
-        currentMemberID = members.first { $0.name == "妈妈" }?.id.uuidString ?? members[0].id.uuidString
+        app.currentMemberID = members.first { $0.name == "妈妈" }?.id ?? members[0].id
         Haptics.success()
         done = true
     }

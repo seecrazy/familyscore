@@ -1138,3 +1138,15 @@ FS-XXXX-XXXX（8 位大写 base32 + 1 位校验）
 - StoreKit 真实沙盒购买（本地 .storekit 路径已通）
 - 地理围栏真机进出（逻辑单测已覆盖）
 - 家庭联赛（多家庭云端社交，M4 后续）
+
+
+## 23.4 v3.3 交付记录（2026-11-17 用户反馈四项）
+
+| # | 问题 | 修复 |
+|---|------|------|
+| 1 | 创建家庭后"先逛逛"首页空白，重启才有 | 根因：@AppStorage 在 ObservableObject 内不发布变更 → AppEnvironment.currentMemberID 重构为 @Published+UserDefaults；新增空家庭"新手引导卡"；端到端回归（testRealCreateFlowShowsContentImmediately） |
+| 2 | 成员不能改名/改角色/删除 | MemberEditSheet（昵称/头像/角色，创建者角色锁定）+ 安全删除：仅无任何记录的成员可删，有记录只能"退出家庭"（账本 append-only 保护） |
+| 3 | 邀请只在创建时出现 | 家庭管理常驻"邀请家人"入口：邀请语复制分享 + 共用设备切换说明 + 导出/导入迁移说明 |
+| 4 | 正式家庭首页随意切换成员 | 切换入口收敛：首页右上角头像仅体验模式显示；正式家庭从「我的 → 家庭管理 → 成员菜单 → 切换到 TA」（家庭管理属家长工具区，孩子不可达） |
+
+工程配套：UI 测试引入 `-resetState`/`-freshOnboarding` 启动参数归一轮间状态；exitDemoMode 改批量删除（毫秒级）。测试：92 单测 + 3 UI 用例全绿。

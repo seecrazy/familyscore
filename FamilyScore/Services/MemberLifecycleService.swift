@@ -29,21 +29,24 @@ extension FamilyService {
         try? context.save()
     }
 
-    /// 退出体验模式（需求 4）：清空演示家庭全部数据，回到引导页
+    /// 退出体验模式（需求 4）：清空演示家庭全部数据，回到引导页。
+    /// v3.3：批量删除（逐条 delete 2000+ 对象会阻塞主线程数秒）。
     static func exitDemoMode(context: ModelContext) {
         let demos = (try? context.fetch(FetchDescriptor<Family>(predicate: #Predicate { $0.isDemo == true }))) ?? []
-        guard let demo = demos.first else { return }
-        let fid = demo.id
-        func purgeAll<T: PersistentModel>(_ type: T.Type) {
-            let all = (try? context.fetch(FetchDescriptor<T>())) ?? []
-            for obj in all { context.delete(obj) }
-        }
-        context.delete(demo)
-        purgeAll(Member.self); purgeAll(Rule.self); purgeAll(ScoreRecord.self)
-        purgeAll(Reward.self); purgeAll(Redemption.self); purgeAll(AuditLog.self)
-        purgeAll(Badge.self); purgeAll(RankSnapshot.self); purgeAll(TaskAssignment.self)
-        purgeAll(WishListItem.self); purgeAll(ScoreLot.self)
-        _ = fid
+        guard demos.first != nil else { return }
+        // 本应用单家庭：全表批量删除等价清演示（毫秒级，不逐条 delete）
+        try? context.delete(model: Family.self)
+        try? context.delete(model: Member.self)
+        try? context.delete(model: Rule.self)
+        try? context.delete(model: ScoreRecord.self)
+        try? context.delete(model: Reward.self)
+        try? context.delete(model: Redemption.self)
+        try? context.delete(model: AuditLog.self)
+        try? context.delete(model: Badge.self)
+        try? context.delete(model: RankSnapshot.self)
+        try? context.delete(model: TaskAssignment.self)
+        try? context.delete(model: WishListItem.self)
+        try? context.delete(model: ScoreLot.self)
         try? context.save()
     }
 }

@@ -1,16 +1,20 @@
 import SwiftUI
 import SwiftData
 
-/// 会话上下文：当前成员（本地单机版通过「切换成员」选择，§8.5）
+/// 会话上下文：当前成员。
+/// v3.3：@AppStorage 在 ObservableObject 内不发布变更通知（创建家庭后首页读旧值的根因），
+/// 改为 @Published + UserDefaults 持久化——写入即时广播，重启时恢复。
 @MainActor
 final class AppEnvironment: ObservableObject {
-    @AppStorage("currentMemberID") private var currentMemberIDString: String = ""
+    private static let memberKey = "currentMemberID"
+    @Published var currentMemberID: UUID? {
+        didSet { UserDefaults.standard.set(currentMemberID?.uuidString ?? "", forKey: Self.memberKey) }
+    }
     @Published var confettiTrigger: Int = 0   // 全屏彩带触发器
     @Published var pendingApprovalCount: Int = 0
 
-    var currentMemberID: UUID? {
-        get { UUID(uuidString: currentMemberIDString) }
-        set { currentMemberIDString = newValue?.uuidString ?? "" }
+    init() {
+        currentMemberID = UserDefaults.standard.string(forKey: Self.memberKey).flatMap(UUID.init(uuidString:))
     }
 
     func celebrate() { confettiTrigger += 1 }

@@ -41,6 +41,9 @@ struct HomeView: View {
                         if family.isDemo { demoBanner }
                         if !birthdayList.isEmpty { birthdayCard }
                         ScoreCardView(summary: s, me: me)
+                        if allRecords.filter({ $0.familyID == family.id }).isEmpty && !family.isDemo {
+                            starterCard
+                        }
                         if me.role == .admin, !s.pendingRecords.isEmpty {
                             approvalsSection(s)
                         }
@@ -70,14 +73,15 @@ struct HomeView: View {
                 .presentationDetents([.medium])
             }
             .sheet(isPresented: $showAssign) { AssignmentSheet() }
-            .confirmationDialog("退出体验模式将清空演示数据，回到开屏引导",
-                                isPresented: $showExitDemo, titleVisibility: .visible) {
+            .alert("退出体验模式？", isPresented: $showExitDemo) {
                 Button("退出并清空演示数据", role: .destructive) {
                     FamilyService.exitDemoMode(context: context)
                     app.currentMemberID = nil
                     hasCompletedOnboarding = false
                 }
                 Button("取消", role: .cancel) {}
+            } message: {
+                Text("将清空演示数据并回到开屏引导")
             }
             .onAppear(perform: refreshBirthdayAndNotifications)
             .onReceive(NotificationCenter.default.publisher(for: .fsArrivedHome)) { _ in
@@ -348,21 +352,44 @@ struct HomeView: View {
         .scoreCard()
     }
 
+    /// 切换成员：体验模式首页快捷切换；正式家庭收进「我的 → 家庭管理」（防止孩子随手切成家长）
+    @ViewBuilder
     private var switchButton: some View {
-        Button {
-            Haptics.light()
-            showSwitcher = true
-        } label: {
-            if let me {
-                Text(me.emoji).font(.title3)
-            } else {
-                Image(systemName: "person.crop.circle")
+        if family?.isDemo == true {
+            Button {
+                Haptics.light()
+                showSwitcher = true
+            } label: {
+                if let me {
+                    Text(me.emoji).font(.title3)
+                } else {
+                    Image(systemName: "person.crop.circle")
+                }
             }
+            .accessibilityLabel("切换成员")
+            .sheet(isPresented: $showSwitcher) { MemberSwitcherSheet() }
         }
-        .accessibilityLabel("切换成员")
-        .sheet(isPresented: $showSwitcher) { MemberSwitcherSheet() }
     }
     @State private var showSwitcher = false
+
+    // MARK: 新家庭引导（v3.3：创建后空家庭的第一次指引）
+    private var starterCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("从第一个 +\(s_firstPoints) 开始", systemImage: "sparkles")
+                .font(.headline)
+            Text("点下面的快速加分试一次打卡；再到「我的 → 家庭管理」把家人加进来、指派今天的待办。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .scoreCard()
+    }
+
+    private var s_firstPoints: Int {
+        guard let me, let r = summary?.quickRules.first else { return 5 }
+        return ScoreEngine.computedPoints(base: r.points, coefficient: me.coefficient, multiplier: 1)
+    }
 
     // MARK: 体验模式 banner（v2.1 需求 4）
     private var demoBanner: some View {

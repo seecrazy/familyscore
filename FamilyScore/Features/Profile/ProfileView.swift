@@ -235,6 +235,8 @@ struct FamilyManageSheet: View {
     @State private var editingBirthday: Member?
     @State private var addBlocked = false
     @State private var showMembershipFromManage = false
+    @State private var editingMember: Member?
+    @State private var showInvite = false
 
     private var family: Family? { app.currentFamily(in: context) }
     private var me: Member? { app.currentMember(in: context) }
@@ -250,6 +252,16 @@ struct FamilyManageSheet: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Button {
+                        showInvite = true
+                    } label: {
+                        Label("邀请家人加入", systemImage: "envelope.badge.person.crop")
+                            .foregroundStyle(Theme.primary)
+                    }
+                } footer: {
+                    Text("共用一台设备的家人：直接在下方成员菜单里切换；多设备：用「数据导出/导入」迁移，或等待 iCloud 共享同步")
+                }
                 Section("成员（\(members.filter { $0.status == .active }.count)）") {
                     ForEach(members) { m in
                         memberRow(m)
@@ -313,10 +325,15 @@ struct FamilyManageSheet: View {
                 Text("升级会员解锁无限成员")
             }
             .sheet(isPresented: $showMembershipFromManage) { MembershipSheet() }
+            .sheet(item: $editingMember) { m in
+                MemberEditSheet(member: m, family: family ?? Family(name: "", ownerID: m.id),
+                                recordCount: recordCount(of: m))
+            }
+            .sheet(isPresented: $showInvite) { InviteSheet(familyName: family?.name ?? "") }
         }
     }
 
-    // MARK: 成员行：角色徽章 + 管理员设置（仅创建者）+ 退出/重新加入 + 生日
+    // MARK: 成员行：角色徽章 + 菜单（编辑/生日/切换/管理员/退出/重新加入）
     @ViewBuilder
     private func memberRow(_ m: Member) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -339,54 +356,61 @@ struct FamilyManageSheet: View {
                             Text("· 🎂\(cal.component(.month, from: bd))/\(cal.component(.day, from: bd))")
                         }
                     }
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
                 Spacer()
-                if m.status == .exited {
-                    Button("重新加入") {
-                        Haptics.success()
-                        FamilyService.rejoin(m, context: context)
+                Menu {
+                    Button(action: { editingMember = m }) {
+                        Label("编辑资料", systemImage: "pencil")
                     }
-                    .font(.caption.weight(.semibold))
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.addGreen)
-                } else if m.id != family?.ownerID {
-                    Menu {
+                    Button(action: { editingBirthday = m }) {
+                        Label(m.birthday == nil ? "设置生日" : "修改生日", systemImage: "gift")
+                    }
+                    if m.status == .active {
+                        Button(action: {
+                            Haptics.light()
+                            app.currentMemberID = m.id
+                            dismiss()
+                        }) {
+                            Label("切换到 \(m.name)", systemImage: "arrow.left.arrow.right")
+                        }
+                    }
+                    if isOwner && m.id != family?.ownerID {
+                        if m.role == .admin {
+                            Button(action: { applyAdmin(m, false) }) {
+                                Label("取消管理员", systemImage: "person.badge.minus")
+                            }
+                        } else {
+                            Button(action: { applyAdmin(m, true) }) {
+                                Label("设为管理员", systemImage: "person.badge.shield.checkmark")
+                            }
+                        }
+                    }
+                    if m.status == .exited {
+                        Button(action: { FamilyService.rejoin(m, context: context) }) {
+                            Label("重新加入", systemImage: "arrow.uturn.backward")
+                        }
+                    } else if m.id != family?.ownerID {
                         Button(role: .destructive, action: { FamilyService.exitMember(m, context: context) }) {
                             Label("退出家庭", systemImage: "door.right.hand.exit")
                         }
-                        Button(action: { editingBirthday = m }) {
-                            Label(m.birthday == nil ? "设置生日" : "修改生日", systemImage: "gift")
-                        }
-                        if isOwner {
-                            if m.role == .admin {
-                                Button(action: { applyAdmin(m, false) }) {
-                                    Label("取消管理员", systemImage: "person.badge.minus")
-                                }
-                            } else {
-                                Button(action: { applyAdmin(m, true) }) {
-                                    Label("设为管理员", systemImage: "person.badge.shield.checkmark")
-                                }
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(.secondary)
                     }
-                } else {
-                    Button {
-                        editingBirthday = m
-                    } label: {
-                        Image(systemName: "gift")
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.primary)
-                    }
-                    .buttonStyle(.plain)
+                } label: {
+                    Image(systemName: "ellipsis.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
         .padding(.vertical, 2)
+    }
+
+
+    private func recordCount(of m: Member) -> Int {
+        let mid = m.id
+        return ((try? context.fetch(FetchDescriptor<ScoreRecord>(
+            predicate: #Predicate { $0.memberID == mid }))) ?? []).count
     }
 
     private func applyAdmin(_ m: Member, _ on: Bool) {
@@ -601,24 +625,20 @@ struct AuditLogSheet: View {
     }
 
     private func actionLabel(_ a: AuditAction) -> String {
-        actorName(a) + " · " + {
-            switch a {
-            case .add: "加分"
-            case .deduct: "减分"
-            case .approve: "确认"
-            case .reject: "驳回"
-            case .reverse: "撤销"
-            case .config: "改配置"
-            case .redeem: "兑换"
-            }
-        }()
+        switch a {
+        case .add: "加分"
+        case .deduct: "减分"
+        case .approve: "确认"
+        case .reject: "驳回"
+        case .reverse: "撤销"
+        case .config: "改配置"
+        case .redeem: "兑换"
+        }
     }
 
     private var memberNames: [UUID: String] {
         Dictionary(uniqueKeysWithValues: allMembers.map { ($0.id, $0.name) })
     }
-
-    private func actorName(_ a: AuditAction) -> String { "" }
 }
 
 // MARK: - 家长核销兑换

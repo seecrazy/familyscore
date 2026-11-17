@@ -7,6 +7,18 @@ struct FamilyScoreApp: App {
     @StateObject private var app = AppEnvironment()
 
     init() {
+        // -resetState：UI 测试辅助——清引导/会话状态并删除本地库（在容器建立前）
+        if ProcessInfo.processInfo.arguments.contains("-resetState") {
+            let defaults = UserDefaults.standard
+            for key in ["hasCompletedOnboarding", "currentMemberID",
+                        MembershipState.storageKey, NotificationSettings.storageKey] {
+                defaults.removeObject(forKey: key)
+            }
+            let url = ModelConfiguration().url
+            try? FileManager.default.removeItem(at: url)
+            try? FileManager.default.removeItem(at: URL(fileURLWithPath: url.path + "-wal"))
+            try? FileManager.default.removeItem(at: URL(fileURLWithPath: url.path + "-shm"))
+        }
         let schema = Schema([
             Family.self, Member.self, Rule.self, ScoreRecord.self, Reward.self,
             Redemption.self, AuditLog.self, Badge.self, RankSnapshot.self,

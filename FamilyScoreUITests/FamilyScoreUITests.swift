@@ -17,7 +17,7 @@ final class FamilyScoreUITests: XCTestCase {
 
     func testDemoWalkthrough() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-demoBoot"]
+        app.launchArguments = ["-resetState", "-demoBoot"]
         app.launch()
 
         // 首页（含 v2.1 新元素：体验 banner、生日卡、待评审）
@@ -151,8 +151,53 @@ app.staticTexts["家庭管理"].tap()
 
     func testOnboardingFlow() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["-resetState", "-demoBoot"]
         app.launch()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 60))
         snap(app, "13_tabbar")
+    }
+
+    /// v3.3 端到端：全新安装 → 真实创建家庭 → 先逛逛 → 首页立即可用（问题 1 回归）
+    func testRealCreateFlowShowsContentImmediately() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-resetState", "-freshOnboarding"]   // 归一状态+强制欢迎页
+        app.launch()
+        XCTAssertTrue(app.buttons["创建我的家庭"].waitForExistence(timeout: 15), "全新安装应停在欢迎页")
+
+        // 真实创建：欢迎页 → 价值轮播（跳过）→ 填表
+        app.buttons["创建我的家庭"].tap()
+        app.buttons["跳过"].tap()
+        let nameField = app.textFields.firstMatch
+        XCTAssertTrue(nameField.waitForExistence(timeout: 6))
+        nameField.tap()
+        nameField.typeText("陈家")
+        // 我的昵称（第二个输入框）
+        let nameField2 = app.textFields.element(boundBy: 1)
+        nameField2.tap()
+        nameField2.typeText("陈爸爸")
+        app.buttons["下一步"].tap()
+        XCTAssertTrue(app.buttons["开始使用"].waitForExistence(timeout: 6))
+        app.buttons["开始使用"].tap()
+        XCTAssertTrue(app.staticTexts["家庭创建成功！"].waitForExistence(timeout: 8))
+        app.buttons["先逛逛，稍后邀请 →"].tap()
+
+        // 关键断言：不重启，首页立即有内容
+        XCTAssertTrue(app.staticTexts["家庭今日总积分"].waitForExistence(timeout: 10),
+                      "创建后首页应立即显示总积分卡（问题 1 回归）")
+        XCTAssertTrue(app.staticTexts["快速加分"].waitForExistence(timeout: 5), "模板规则应立即可用")
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '从第一个'"))
+            .firstMatch.waitForExistence(timeout: 5), "新手引导卡应出现")
+        snap(app, "17_real_create_home")
+
+        // 邀请入口常驻（问题 3）：我的 → 家庭管理 → 邀请家人
+        app.tabBars.buttons["我的"].tap()
+        let fm = app.staticTexts["家庭管理"]
+        XCTAssertTrue(fm.waitForExistence(timeout: 6))
+        fm.tap()
+        XCTAssertTrue(app.staticTexts["邀请家人加入"].waitForExistence(timeout: 6), "邀请入口应常驻")
+        app.staticTexts["邀请家人加入"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS '复制邀请语'"))
+            .firstMatch.waitForExistence(timeout: 5))
+        snap(app, "18_invite")
     }
 }

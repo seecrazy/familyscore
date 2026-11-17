@@ -322,6 +322,7 @@ struct RewardConfirmSheet: View {
             _ = try RewardService.redeem(member: me, family: f, reward: reward, context: context)
             Haptics.success()
             app.celebrate()
+            WidgetSyncService.refresh(family: f, me: me, context: context)
             onResult("兑换成功！把核销码给家长吧 🎉")
             dismiss()
         } catch let e as RewardError {

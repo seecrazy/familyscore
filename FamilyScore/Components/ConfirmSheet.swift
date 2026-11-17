@@ -142,6 +142,7 @@ struct ConfirmSheet: View {
                 Haptics.light()
                 onDone("已提交，家长评审通过后就入账 🛡️")
             }
+            WidgetSyncService.refresh(family: family, me: member, context: context)
             dismiss()
         } catch let err as ScoreEngineError {
             if case .repeatWindow = err, !force {

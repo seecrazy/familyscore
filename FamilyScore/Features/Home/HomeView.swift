@@ -98,6 +98,11 @@ struct HomeView: View {
         NotificationService.requestAuthorization()
         NotificationService.reschedule(family: f, members: members, context: context)
         LocationService.shared.startMonitoring(family: f)
+        // 锁屏一键打卡队列结算 + Widget 摘要刷新（§14.2）
+        if let me {
+            WidgetSyncService.consumeQueue(me: me, family: f, context: context)
+            WidgetSyncService.refresh(family: f, me: me, context: context)
+        }
     }
 
     /// 到家提醒：有未完成待办才发（§18.4 地理触发）
@@ -175,6 +180,7 @@ struct HomeView: View {
                         Button {
                             Haptics.light()
                             try? ScoreEngine.approve(record: rec, family: family!, by: me!, context: context)
+                            WidgetSyncService.refresh(family: family, me: me, context: context)
                         } label: {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.title3)

@@ -104,6 +104,13 @@ enum CloudSyncStatus: Equatable {
 enum CloudSyncService {
 
     static func checkStatus(_ completion: @escaping (CloudSyncStatus) -> Void) {
+        // 无 iCloud entitlement 的构建（本地开发）直接本地模式——CKContainer.default() 会崩
+        guard let containers = Bundle.main.object(forInfoDictionaryKey:
+                "com.apple.developer.icloud-container-identifiers") as? [String],
+              !containers.isEmpty else {
+            completion(.localOnly)
+            return
+        }
         CKContainer.default().accountStatus { status, error in
             DispatchQueue.main.async {
                 switch status {

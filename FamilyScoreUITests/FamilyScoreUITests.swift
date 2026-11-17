@@ -88,6 +88,35 @@ app.staticTexts["家庭管理"].tap()
         app.buttons["完成"].firstMatch.tap()
         sleep(1)
 
+        // v3.0 新页：通知设置 / 云同步 / 会员（先滚动让入口进可访问树，Form 页再滚动到底部断言）
+        app.swipeUp()
+        let notifRow = app.staticTexts["通知设置"]
+        XCTAssertTrue(notifRow.waitForExistence(timeout: 6), "通知设置入口缺失")
+        notifRow.tap()
+        sleep(1)
+        XCTAssertTrue(app.navigationBars["通知设置"].waitForExistence(timeout: 8), "通知设置页未打开")
+        app.swipeUp()
+        _ = app.staticTexts["免打扰"].waitForExistence(timeout: 4)
+        snap(app, "14_notif_settings")
+        app.navigationBars.buttons.firstMatch.tap()
+        sleep(1)
+        app.swipeDown()   // 滚回中上部，让云同步/会员行可见可点
+        sleep(1)
+        let cloudRow = app.staticTexts["云同步"]
+        XCTAssertTrue(cloudRow.waitForExistence(timeout: 6), "云同步入口缺失")
+        cloudRow.tap()
+        XCTAssertTrue(app.staticTexts["本地变更队列"].waitForExistence(timeout: 8), "云同步页未打开")
+        snap(app, "15_cloud_sync")
+        app.buttons["完成"].firstMatch.tap()
+        sleep(1)
+        let memberRow = app.staticTexts["家分宝会员"]
+        XCTAssertTrue(memberRow.waitForExistence(timeout: 6), "会员入口缺失")
+        memberRow.tap()
+        XCTAssertTrue(app.staticTexts["核心功能永久免费"].waitForExistence(timeout: 8), "会员页未打开")
+        snap(app, "16_membership")
+        app.buttons["完成"].firstMatch.tap()
+        sleep(1)
+
         // 首页评审：通过小明的洗碗
         app.tabBars.buttons["首页"].tap()
         sleep(1)

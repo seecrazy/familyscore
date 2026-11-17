@@ -44,7 +44,7 @@ enum RuleTemplateService {
         .init(category: .chore, name: "洗碗", icon: "fork.knife", points: 5, dailyLimit: 3, requiresApproval: true),
         .init(category: .chore, name: "扫地/拖地", icon: "paintbrush", points: 8, dailyLimit: 2, requiresApproval: true),
         .init(category: .chore, name: "倒垃圾", icon: "trash", points: 3, dailyLimit: 2, requiresApproval: false),
-        .init(category: .chore, name: "做饭（一餐）", icon: "chef.hat", points: 15, dailyLimit: 2, requiresApproval: true),
+        .init(category: .chore, name: "做饭（一餐）", icon: "fork.knife.circle", points: 15, dailyLimit: 2, requiresApproval: true),
         .init(category: .chore, name: "洗衣+晾晒", icon: "tshirt", points: 6, dailyLimit: 2, requiresApproval: true),
         .init(category: .chore, name: "整理房间", icon: "square.and.arrow.down.on.square", points: 5, dailyLimit: 2, requiresApproval: false),
         .init(category: .chore, name: "深度清洁", icon: "sparkles", points: 20, dailyLimit: 1, requiresApproval: true),
@@ -96,7 +96,7 @@ enum RuleTemplateService {
     static func defaultRewardDrafts() -> [(title: String, icon: String, cost: Int, stock: Int, discount: Int?, discountEndsAt: Date?)] {
         [
             ("选今晚的电影", "film", 150, -1, 120, .now.addingTimeInterval(3 * 86400)),
-            ("冰淇淋一个", "icecream", 80, 3, nil, nil),
+            ("冰淇淋一个", "birthday.cake", 80, 3, nil, nil),
             ("零花钱 10 元", "banknote", 200, -1, nil, nil),
             ("免做一次家务", "figure.wave", 50, -1, nil, nil),
             ("周末活动我来选", "ticket", 300, 1, nil, nil),

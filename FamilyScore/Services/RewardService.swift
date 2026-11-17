@@ -29,6 +29,14 @@ enum RewardService {
         return (try? context.fetch(desc))?.first
     }
 
+    /// 图标占用映射（icon -> 占用奖励名）：新奖励选图标时禁选已占用（排除正在编辑的自身）
+    static func occupiedIconMap(rewards: [Reward], excluding editingID: UUID?) -> [String: String] {
+        rewards.filter { $0.id != editingID }
+            .reduce(into: [:]) { map, r in
+                if map[r.icon] == nil { map[r.icon] = r.title }  // 同图标多奖励取第一个
+            }
+    }
+
     /// 快捷上架/下架（列表滑动操作）
     static func setActive(_ reward: Reward, _ active: Bool, context: ModelContext) {
         reward.isActive = active

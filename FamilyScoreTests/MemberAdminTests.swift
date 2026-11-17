@@ -91,3 +91,39 @@ extension MemberAdminTests {
         XCTAssertTrue(logs.contains { $0.reason?.contains("上架「零花钱」") == true })
     }
 }
+
+// MARK: v3.5 图标占用
+extension MemberAdminTests {
+    func testOccupiedIconMapExcludesSelfAndMerges() throws {
+        let f = TestDB.makeFamily(context: context)
+        let a = Reward(familyID: f.family.id, title: "冰淇淋", icon: "icecream", cost: 80)
+        let b = Reward(familyID: f.family.id, title: "电影", icon: "film", cost: 150)
+        context.insert(a); context.insert(b)
+
+        // 新建（无排除）：两个图标都占用
+        var map = RewardService.occupiedIconMap(rewards: [a, b], excluding: nil)
+        XCTAssertEqual(map["icecream"], "冰淇淋")
+        XCTAssertEqual(map["film"], "电影")
+
+        // 编辑 a：排除自身 → 只剩 film 占用
+        map = RewardService.occupiedIconMap(rewards: [a, b], excluding: a.id)
+        XCTAssertNil(map["icecream"])
+        XCTAssertEqual(map["film"], "电影")
+
+        // 同图标多奖励取先出现的
+        let c = Reward(familyID: f.family.id, title: "另一个冰淇淋", icon: "icecream", cost: 90)
+        map = RewardService.occupiedIconMap(rewards: [a, c], excluding: nil)
+        XCTAssertEqual(map["icecream"], "冰淇淋")
+    }
+
+    func testIconLibraryUnique() {
+        // 图标库内不重复（避免格子重复出现）
+        let all = RewardEditSheet.iconLibrary.flatMap(\.icons)
+        XCTAssertEqual(all.count, Set(all).count)
+        XCTAssertGreaterThanOrEqual(all.count, 28, "图标库应扩充到 30 个上下")
+        // 预置奖励的 6 个图标在库中（预置奖励可正常换回原图标语义）
+        for preset in RuleTemplateService.defaultRewardDrafts() where preset.icon != "ticket" {
+            XCTAssertTrue(all.contains(preset.icon), "预置图标 \\(preset.icon) 应在图标库中")
+        }
+    }
+}

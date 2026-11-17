@@ -73,7 +73,7 @@ struct RewardAdminSheet: View {
                 } header: {
                     Text("奖励（\(rewards.filter(\.isActive).count) 上架中）")
                 } footer: {
-                    Text("点奖励编辑定价；左滑快捷上下架——下架的奖励随时可以重新上架，兑换记录始终保留")
+                    Text("创建家庭时自带 6 个预置奖励（默认已上架）。点奖励编辑定价；左滑快捷上下架——下架的随时可重新上架，兑换记录始终保留。")
                 }
             }
             .navigationTitle("奖励商城管理")
@@ -118,9 +118,18 @@ struct RewardEditSheet: View {
     @State private var isActive = true
     @State private var duplicate: Reward?   // 同名已有奖励（含下架）
 
-    static let icons = ["film", "icecream", "banknote", "ticket", "gamecontroller.fill",
-                        "figure.wave", "moon.stars", "gift.fill", "cup.and.saucer.fill",
-                        "cart.fill", "book.fill", "airplane"]
+    /// 图标库（31 个，分类展示；均为 iOS 17 稳定存在的 SF Symbol）
+    static let iconLibrary: [(category: String, icons: [String])] = [
+        ("吃喝", ["birthday.cake", "cup.and.saucer.fill", "popcorn",
+                 "takeoutbag.and.cup.and.straw.fill", "gift.fill"]),
+        ("玩乐", ["film", "ticket", "gamecontroller.fill", "party.popper.fill",
+                 "music.note", "headset", "tv.fill"]),
+        ("出行", ["airplane", "car.fill", "figure.walk", "map.fill", "sun.max.fill", "tent.fill"]),
+        ("零花与特权", ["banknote", "creditcard.fill", "hourglass", "moon.stars",
+                     "figure.wave", "qrcode"]),
+        ("成长", ["book.fill", "graduationcap.fill", "medal.fill", "star.fill",
+                "heart.fill", "crown.fill", "sparkles"]),
+    ]
 
     private var family: Family? { app.currentFamily(in: context) }
 
@@ -132,6 +141,11 @@ struct RewardEditSheet: View {
                         .onChange(of: title) { _, newValue in
                             checkDuplicate(newValue)
                         }
+                    if let occupiedBy = occupiedIcons[icon] {
+                        Label("当前图标已被「\(occupiedBy)」使用", systemImage: "exclamationmark.triangle")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.deductRed)
+                    }
                     if let dup = duplicate {
                         VStack(alignment: .leading, spacing: 6) {
                             Label(dup.isActive ? "已有同名奖励（上架中），无需重新填写" : "已有同名奖励（已下架），无需重新填写",
@@ -160,24 +174,32 @@ struct RewardEditSheet: View {
                         .padding(10)
                         .background(Theme.gold.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
                     }
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack {
-                            ForEach(Self.icons, id: \.self) { ic in
-                                Button {
-                                    icon = ic
-                                } label: {
-                                    Image(systemName: ic)
-                                        .font(.title3)
-                                        .frame(width: 42, height: 42)
-                                        .foregroundStyle(icon == ic ? .white : Theme.primary)
-                                        .background(icon == ic ? Theme.primary : Theme.primary.opacity(0.08),
-                                                    in: RoundedRectangle(cornerRadius: 10))
+                }
+                Section {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            ForEach(Self.iconLibrary, id: \.category) { group in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(group.category)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(44)), count: 6),
+                                              spacing: 8) {
+                                        ForEach(group.icons, id: \.self) { ic in
+                                            iconCell(ic)
+                                        }
+                                    }
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                     }
+                    .frame(height: 280)
+                } header: {
+                    Text("图标")
+                } footer: {
+                    Text("带「已用」标记的图标已被家里其他奖励占用，换一个避免孩子混淆")
                 }
+
                 Section("定价与库存") {
                     Stepper(value: $cost, in: 10...2000, step: 10) {
                         HStack { Text("所需积分"); Spacer(); Text("\(cost) 分").monospacedDigit() }
@@ -228,6 +250,40 @@ struct RewardEditSheet: View {
                 }
             }
         }
+    }
+
+    private var occupiedIcons: [String: String] {
+        guard let f = family else { return [:] }
+        return RewardService.occupiedIconMap(
+            rewards: allRewards.filter { $0.familyID == f.id }, excluding: reward?.id)
+    }
+
+    @ViewBuilder
+    private func iconCell(_ ic: String) -> some View {
+        let occupiedBy = occupiedIcons[ic]
+        Button {
+            icon = ic
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: ic)
+                    .font(.title3)
+                    .frame(width: 44, height: 44)
+                    .foregroundStyle(icon == ic ? .white : (occupiedBy != nil ? .secondary : Theme.primary))
+                    .background(icon == ic ? Theme.primary : Theme.primary.opacity(0.07),
+                                in: RoundedRectangle(cornerRadius: 10))
+                if occupiedBy != nil {
+                    Text("已用")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 3).padding(.vertical, 1)
+                        .background(Color(hex: 0x8E8E93), in: Capsule())
+                        .offset(x: 4, y: -4)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(occupiedBy != nil)
+        .accessibilityLabel(occupiedBy.map { "图标 \(ic)，已被\($0)占用" } ?? "图标 \(ic)")
     }
 
     private func checkDuplicate(_ newValue: String) {

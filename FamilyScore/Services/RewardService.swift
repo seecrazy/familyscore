@@ -17,6 +17,28 @@ enum RewardError: LocalizedError, Equatable {
 
 enum RewardService {
 
+    // MARK: 商场管理辅助（v3.4：查重复用 + 快捷上下架）
+
+    /// 按名称查已有奖励（含已下架）——新建时避免重复录入，复用配置重新上架
+    static func findExisting(familyID: UUID, title: String, context: ModelContext) -> Reward? {
+        let name = title.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return nil }
+        let desc = FetchDescriptor<Reward>(predicate: #Predicate {
+            $0.familyID == familyID && $0.title == name
+        })
+        return (try? context.fetch(desc))?.first
+    }
+
+    /// 快捷上架/下架（列表滑动操作）
+    static func setActive(_ reward: Reward, _ active: Bool, context: ModelContext) {
+        reward.isActive = active
+        AuditService.log(familyID: reward.familyID, actorID: reward.familyID, action: .config,
+                         targetID: reward.id,
+                         reason: active ? "上架「\(reward.title)」" : "下架「\(reward.title)」",
+                         context: context)
+        try? context.save()
+    }
+
     // MARK: 兑换
 
     @discardableResult

@@ -56,11 +56,24 @@ struct RewardAdminSheet: View {
                                 }
                             }
                         }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            if r.isActive {
+                                Button(role: .destructive) {
+                                    RewardService.setActive(r, false, context: context)
+                                } label: { Label("下架", systemImage: "arrow.down.circle") }
+                            } else {
+                                Button {
+                                    RewardService.setActive(r, true, context: context)
+                                    Haptics.success()
+                                } label: { Label("上架", systemImage: "arrow.up.circle.fill") }
+                                .tint(Theme.addGreen)
+                            }
+                        }
                     }
                 } header: {
                     Text("奖励（\(rewards.filter(\.isActive).count) 上架中）")
                 } footer: {
-                    Text("点任意奖励编辑；下架后成员不可见但兑换记录保留")
+                    Text("点奖励编辑定价；左滑快捷上下架——下架的奖励随时可以重新上架，兑换记录始终保留")
                 }
             }
             .navigationTitle("奖励商城管理")
@@ -93,6 +106,7 @@ struct RewardEditSheet: View {
     @EnvironmentObject var app: AppEnvironment
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Query private var allRewards: [Reward]
 
     @State private var title = ""
     @State private var icon = "gift.fill"
@@ -102,6 +116,7 @@ struct RewardEditSheet: View {
     @State private var discountCost = 80
     @State private var discountDays = 3
     @State private var isActive = true
+    @State private var duplicate: Reward?   // 同名已有奖励（含下架）
 
     static let icons = ["film", "icecream", "banknote", "ticket", "gamecontroller.fill",
                         "figure.wave", "moon.stars", "gift.fill", "cup.and.saucer.fill",
@@ -114,6 +129,37 @@ struct RewardEditSheet: View {
             Form {
                 Section("奖励内容") {
                     TextField("名称，如：选今晚的电影", text: $title)
+                        .onChange(of: title) { _, newValue in
+                            checkDuplicate(newValue)
+                        }
+                    if let dup = duplicate {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label(dup.isActive ? "已有同名奖励（上架中），无需重新填写" : "已有同名奖励（已下架），无需重新填写",
+                                  systemImage: dup.isActive ? "checkmark.seal" : "arrow.uturn.backward.circle")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(dup.isActive ? Theme.addGreen : Theme.gold)
+                            Text("「\(dup.title)」\(dup.cost) 分 · \(dup.icon)（\(dup.isActive ? "在售" : "已下架")）")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            if !dup.isActive {
+                                Button {
+                                    RewardService.setActive(dup, true, context: context)
+                                    Haptics.success()
+                                    dismiss()
+                                } label: {
+                                    Label("直接重新上架该奖励", systemImage: "arrow.up.circle.fill")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(Theme.addGreen)
+                                }
+                                .buttonStyle(.plain)
+                                Text("也可以改个名字保存为新奖励")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(10)
+                        .background(Theme.gold.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                    }
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack {
                             ForEach(Self.icons, id: \.self) { ic in
@@ -155,10 +201,8 @@ struct RewardEditSheet: View {
                         }
                     }
                 }
-                if reward != nil {
-                    Section {
-                        Toggle("上架中", isOn: $isActive)
-                    }
+                Section {
+                    Toggle("上架中（保存后立即出现在商城）", isOn: $isActive)
                 }
             }
             .navigationTitle(reward == nil ? "新奖励" : "编辑奖励")
@@ -168,7 +212,7 @@ struct RewardEditSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") { save() }
                         .fontWeight(.semibold)
-                        .disabled(title.isEmpty || (hasDiscount && discountCost >= cost))
+                        .disabled(title.isEmpty || (hasDiscount && discountCost >= cost) || duplicate != nil)
                 }
             }
             .onAppear {
@@ -186,8 +230,21 @@ struct RewardEditSheet: View {
         }
     }
 
+    private func checkDuplicate(_ newValue: String) {
+        guard reward == nil, let f = family else { duplicate = nil; return }
+        let hit = allRewards.first {
+            $0.familyID == f.id && $0.title == newValue.trimmingCharacters(in: .whitespaces)
+        }
+        duplicate = (hit?.id != reward?.id) ? hit : nil
+    }
+
     private func save() {
         guard let f = family else { return }
+        // 新建命中同名已有奖励 → 阻断（提示里已提供"重新上架"或改名）
+        if reward == nil, let dup = duplicate {
+            _ = dup
+            return
+        }
         if let r = reward {
             r.title = title; r.icon = icon; r.cost = cost; r.stock = stock; r.isActive = isActive
             r.discountCost = hasDiscount ? discountCost : nil

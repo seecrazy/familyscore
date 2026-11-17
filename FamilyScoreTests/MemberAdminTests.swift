@@ -56,3 +56,38 @@ final class MemberAdminTests: XCTestCase {
                                                         role: .child, context: context))
     }
 }
+
+// MARK: v3.4 奖励查重复用 + 快捷上下架
+extension MemberAdminTests {
+    func testFindExistingRewardIncludesUnpublished() throws {
+        let f = TestDB.makeFamily(context: context)
+        let onSale = Reward(familyID: f.family.id, title: "选今晚的电影", icon: "film", cost: 150)
+        let off = Reward(familyID: f.family.id, title: "冰淇淋一个", icon: "icecream", cost: 80)
+        off.isActive = false
+        context.insert(onSale); context.insert(off)
+
+        // 命中已下架的同名奖励（复用场景）
+        let hit = RewardService.findExisting(familyID: f.family.id, title: " 冰淇淋一个 ", context: context)
+        XCTAssertEqual(hit?.id, off.id)
+        // 在售的也能命中
+        XCTAssertEqual(RewardService.findExisting(familyID: f.family.id, title: "选今晚的电影",
+                                                  context: context)?.id, onSale.id)
+        // 不存在 / 空串
+        XCTAssertNil(RewardService.findExisting(familyID: f.family.id, title: "不存在的", context: context))
+        XCTAssertNil(RewardService.findExisting(familyID: f.family.id, title: "  ", context: context))
+    }
+
+    func testQuickPublishUnpublish() throws {
+        let f = TestDB.makeFamily(context: context)
+        let r = Reward(familyID: f.family.id, title: "零花钱", icon: "banknote", cost: 200)
+        r.isActive = false
+        context.insert(r)
+        RewardService.setActive(r, true, context: context)
+        XCTAssertTrue(r.isActive)
+        RewardService.setActive(r, false, context: context)
+        XCTAssertFalse(r.isActive)
+        // 操作入审计
+        let logs = (try? context.fetch(FetchDescriptor<AuditLog>())) ?? []
+        XCTAssertTrue(logs.contains { $0.reason?.contains("上架「零花钱」") == true })
+    }
+}

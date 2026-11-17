@@ -123,7 +123,7 @@ extension MemberAdminTests {
         XCTAssertGreaterThanOrEqual(all.count, 28, "图标库应扩充到 30 个上下")
         // 预置奖励的 6 个图标在库中（预置奖励可正常换回原图标语义）
         for preset in RuleTemplateService.defaultRewardDrafts() where preset.icon != "ticket" {
-            XCTAssertTrue(all.contains(preset.icon), "预置图标 \\(preset.icon) 应在图标库中")
+            XCTAssertTrue(all.contains { $0.symbol == preset.icon }, "预置图标 \\(preset.icon) 应在图标库中")
         }
     }
 }

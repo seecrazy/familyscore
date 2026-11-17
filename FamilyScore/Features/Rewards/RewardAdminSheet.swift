@@ -118,18 +118,52 @@ struct RewardEditSheet: View {
     @State private var isActive = true
     @State private var duplicate: Reward?   // 同名已有奖励（含下架）
 
-    /// 图标库（31 个，分类展示；均为 iOS 17 稳定存在的 SF Symbol）
-    static let iconLibrary: [(category: String, icons: [String])] = [
-        ("吃喝", ["birthday.cake", "cup.and.saucer.fill", "popcorn",
-                 "takeoutbag.and.cup.and.straw.fill", "gift.fill"]),
-        ("玩乐", ["film", "ticket", "gamecontroller.fill", "party.popper.fill",
-                 "music.note", "headset", "tv.fill"]),
-        ("出行", ["airplane", "car.fill", "figure.walk", "map.fill", "sun.max.fill", "tent.fill"]),
-        ("零花与特权", ["banknote", "creditcard.fill", "hourglass", "moon.stars",
-                     "figure.wave", "qrcode"]),
-        ("成长", ["book.fill", "graduationcap.fill", "medal.fill", "star.fill",
-                "heart.fill", "crown.fill", "sparkles"]),
+    struct IconDef: Identifiable, Hashable {
+        let symbol: String
+        let name: String     // 名称留空时的默认名
+        var id: String { symbol }
+    }
+
+    /// 图标库（30 个，分类展示；符号名经 iOS 27 运行时日志验证存在），name 为名称留空时的默认名
+    static let iconLibrary: [(category: String, icons: [IconDef])] = [
+        ("吃喝", [.init(symbol: "birthday.cake", name: "蛋糕"),
+                 .init(symbol: "cup.and.saucer.fill", name: "下午茶"),
+                 .init(symbol: "popcorn", name: "爆米花"),
+                 .init(symbol: "takeoutbag.and.cup.and.straw.fill", name: "外带饮品")]),
+        ("玩乐", [.init(symbol: "film", name: "电影"),
+                .init(symbol: "ticket", name: "演出票"),
+                .init(symbol: "gamecontroller.fill", name: "游戏时间"),
+                .init(symbol: "party.popper.fill", name: "开个派对"),
+                .init(symbol: "music.note", name: "点歌"),
+                .init(symbol: "headset", name: "听歌时光"),
+                .init(symbol: "tv.fill", name: "看动画片")]),
+        ("出行", [.init(symbol: "airplane", name: "坐飞机出游"),
+                 .init(symbol: "car.fill", name: "全家兜风"),
+                 .init(symbol: "figure.walk", name: "散步同游"),
+                 .init(symbol: "map.fill", name: "探险地图"),
+                 .init(symbol: "sun.max.fill", name: "户外野餐"),
+                 .init(symbol: "tent.fill", name: "露营")]),
+        ("零花与特权", [.init(symbol: "banknote", name: "零花钱"),
+                     .init(symbol: "creditcard.fill", name: "零用金卡"),
+                     .init(symbol: "hourglass", name: "缓一缓卡"),
+                     .init(symbol: "moon.stars", name: "晚睡券"),
+                     .init(symbol: "figure.wave", name: "免做家务"),
+                     .init(symbol: "qrcode", name: "神秘兑换")]),
+        ("成长", [.init(symbol: "book.fill", name: "一本课外书"),
+                .init(symbol: "graduationcap.fill", name: "学习进步奖"),
+                .init(symbol: "medal.fill", name: "小勋章"),
+                .init(symbol: "star.fill", name: "小星星"),
+                .init(symbol: "heart.fill", name: "爱心愿望"),
+                .init(symbol: "crown.fill", name: "小皇冠"),
+                .init(symbol: "sparkles", name: "惊喜盒")]),
     ]
+
+    static let allIcons: [IconDef] = iconLibrary.flatMap(\.icons)
+
+    /// 图标默认名（新奖励名称留空时使用）
+    static func defaultName(for symbol: String) -> String {
+        allIcons.first { $0.symbol == symbol }?.name ?? "新奖励"
+    }
 
     private var family: Family? { app.currentFamily(in: context) }
 
@@ -137,10 +171,18 @@ struct RewardEditSheet: View {
         NavigationStack {
             Form {
                 Section("奖励内容") {
-                    TextField("名称，如：选今晚的电影", text: $title)
+                    TextField("名称（可留空）", text: $title)
                         .onChange(of: title) { _, newValue in
                             checkDuplicate(newValue)
                         }
+                        .onChange(of: icon) { _, _ in
+                            checkDuplicate(title)   // 换图标后默认名变化，重新查重
+                        }
+                    Text(title.trimmingCharacters(in: .whitespaces).isEmpty
+                         ? "不填名称，保存后自动叫「\(effectiveTitle)」"
+                         : " ")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                     if let occupiedBy = occupiedIcons[icon] {
                         Label("当前图标已被「\(occupiedBy)」使用", systemImage: "exclamationmark.triangle")
                             .font(.caption2)
@@ -185,8 +227,8 @@ struct RewardEditSheet: View {
                                         .foregroundStyle(.secondary)
                                     LazyVGrid(columns: Array(repeating: GridItem(.fixed(44)), count: 6),
                                               spacing: 8) {
-                                        ForEach(group.icons, id: \.self) { ic in
-                                            iconCell(ic)
+                                        ForEach(group.icons) { def in
+                                            iconCell(def.symbol)
                                         }
                                     }
                                 }
@@ -234,7 +276,7 @@ struct RewardEditSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") { save() }
                         .fontWeight(.semibold)
-                        .disabled(title.isEmpty || (hasDiscount && discountCost >= cost) || duplicate != nil)
+                        .disabled(hasDiscount && discountCost >= cost)
                 }
             }
             .onAppear {
@@ -286,35 +328,40 @@ struct RewardEditSheet: View {
         .accessibilityLabel(occupiedBy.map { "图标 \(ic)，已被\($0)占用" } ?? "图标 \(ic)")
     }
 
+    /// 实际将保存的名称：留空 → 图标默认名
+    private var effectiveTitle: String {
+        let t = title.trimmingCharacters(in: .whitespaces)
+        return t.isEmpty ? Self.defaultName(for: icon) : t
+    }
+
     private func checkDuplicate(_ newValue: String) {
         guard reward == nil, let f = family else { duplicate = nil; return }
-        let hit = allRewards.first {
-            $0.familyID == f.id && $0.title == newValue.trimmingCharacters(in: .whitespaces)
-        }
+        let name = effectiveTitle
+        let hit = allRewards.first { $0.familyID == f.id && $0.title == name }
         duplicate = (hit?.id != reward?.id) ? hit : nil
     }
 
     private func save() {
         guard let f = family else { return }
         // 新建命中同名已有奖励 → 阻断（提示里已提供"重新上架"或改名）
-        if reward == nil, let dup = duplicate {
-            _ = dup
-            return
+        if reward == nil, duplicate != nil {
+            return   // 命中同名（含按默认名生成）——顶部提示已给出"重新上架/换图标"路径
         }
+        let finalTitle = effectiveTitle
         if let r = reward {
-            r.title = title; r.icon = icon; r.cost = cost; r.stock = stock; r.isActive = isActive
+            r.title = finalTitle; r.icon = icon; r.cost = cost; r.stock = stock; r.isActive = isActive
             r.discountCost = hasDiscount ? discountCost : nil
             r.discountEndsAt = hasDiscount ? .now.addingTimeInterval(Double(discountDays) * 86400) : nil
         } else {
             context.insert(Reward(
-                familyID: f.id, title: title, icon: icon, cost: cost,
+                familyID: f.id, title: finalTitle, icon: icon, cost: cost,
                 discountCost: hasDiscount ? discountCost : nil,
                 discountEndsAt: hasDiscount ? .now.addingTimeInterval(Double(discountDays) * 86400) : nil,
                 stock: stock))
         }
         AuditService.log(familyID: f.id, actorID: app.currentMemberID ?? f.ownerID,
                          action: .config, targetID: reward?.id ?? f.id,
-                         reason: "\(reward == nil ? "新增" : "修改")奖励「\(title)」", context: context)
+                         reason: "\(reward == nil ? "新增" : "修改")奖励「\(finalTitle)」", context: context)
         try? context.save()
         Haptics.success()
         dismiss()

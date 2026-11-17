@@ -72,6 +72,14 @@ final class FamilyScoreUITests: XCTestCase {
         snap(app, "08_reward_admin")
         app.buttons["plus.circle.fill"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["奖励内容"].waitForExistence(timeout: 6))
+        // v3.6：名称可留空（提示文案）+ 预置图标占用徽章可见
+        XCTAssertTrue(app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS '不填名称'")).firstMatch.waitForExistence(timeout: 4),
+            "应提示名称可留空自动用图标名")
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS '已用'")).firstMatch.waitForExistence(timeout: 4),
+            "被预置奖励占用的图标应显示已用标记")
         snap(app, "09_reward_edit")
         app.navigationBars.buttons.firstMatch.tap() // 取消编辑
         sleep(1)

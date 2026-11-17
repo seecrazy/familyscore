@@ -15,6 +15,7 @@ struct ProfileView: View {
     @State private var showAudit = false
     @State private var showRedeemAdmin = false
     @State private var showRewardAdmin = false
+    @State private var showNotifSettings = false
 
     private var family: Family? { app.currentFamily(in: context) }
     private var me: Member? { app.currentMember(in: context) }
@@ -39,6 +40,7 @@ struct ProfileView: View {
             .sheet(isPresented: $showAudit) { AuditLogSheet() }
             .sheet(isPresented: $showRedeemAdmin) { AdminRedeemSheet() }
             .sheet(isPresented: $showRewardAdmin) { RewardAdminSheet() }
+            .sheet(isPresented: $showNotifSettings) { NotificationSettingsSheet() }
         }
     }
 
@@ -120,9 +122,12 @@ struct ProfileView: View {
     }
 
     private var memberSection: some View {
-        Section("成员") {
+        Section("成员与设置") {
             row("arrow.left.arrow.right", "切换成员") {
                 showSwitcher = true
+            }
+            row("bell.badge", "通知设置") {
+                showNotifSettings = true
             }
         }
     }

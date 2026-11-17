@@ -92,9 +92,7 @@ struct HomeView: View {
         let members = allMembers.filter { $0.familyID == f.id }
         birthdayList = BirthdayService.upcoming(members: members, family: f)
         NotificationService.requestAuthorization()
-        NotificationService.reschedule(
-            family: f, members: members,
-            assignments: allAssignments.filter { $0.familyID == f.id })
+        NotificationService.reschedule(family: f, members: members, context: context)
     }
 
     private func header(family: Family) -> some View {

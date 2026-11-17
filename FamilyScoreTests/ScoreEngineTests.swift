@@ -246,11 +246,13 @@ final class ScoreEngineTests: XCTestCase {
         let out21 = try ScoreEngine.submit(member: f.child, family: f.family, rule: rule,
                                            at: t, actorIsAdmin: false, forceRepeated: true, context: context)
         guard case .pendingApproval(let rec21) = out21 else { return XCTFail() }
-        XCTAssertThrowsError(try ScoreEngine.approve(record: rec21, family: f.family, by: f.mom, context: context)) { e in
+        XCTAssertThrowsError(try ScoreEngine.approve(record: rec21, family: f.family, by: f.mom,
+                                                     at: t, context: context)) { e in
             XCTAssertEqual(e as? ScoreEngineError, .approverDailyLimitReached)
         }
         // 爸爸未达上限，可确认
-        _ = try ScoreEngine.approve(record: rec21, family: f.family, by: f.dad, context: context)
+        _ = try ScoreEngine.approve(record: rec21, family: f.family, by: f.dad,
+                                    at: t, context: context)
     }
 
     // MARK: 撤销（§20.2-5 反向记录）

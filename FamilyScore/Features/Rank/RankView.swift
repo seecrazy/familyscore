@@ -42,6 +42,13 @@ struct RankView: View {
                             .padding(.top, 40)
                     } else {
                         podiumSection
+                        if period == .all, !MembershipState.load().isMember {
+                            Label("免费版展示近一年历史，会员解锁永久", systemImage: "crown.fill")
+                                .font(.caption)
+                                .foregroundStyle(Theme.gold)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal)
+                        }
                         listSection
                         championsSection
                         progressSection

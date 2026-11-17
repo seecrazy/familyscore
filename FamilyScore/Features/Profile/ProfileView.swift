@@ -18,6 +18,7 @@ struct ProfileView: View {
     @State private var showNotifSettings = false
     @State private var showExport = false
     @State private var showCloudSync = false
+    @State private var showMembership = false
 
     private var family: Family? { app.currentFamily(in: context) }
     private var me: Member? { app.currentMember(in: context) }
@@ -45,6 +46,7 @@ struct ProfileView: View {
             .sheet(isPresented: $showNotifSettings) { NotificationSettingsSheet() }
             .sheet(isPresented: $showExport) { ExportSheet() }
             .sheet(isPresented: $showCloudSync) { CloudSyncSheet() }
+            .sheet(isPresented: $showMembership) { MembershipSheet() }
         }
     }
 
@@ -122,6 +124,7 @@ struct ProfileView: View {
             row("gift.fill", "奖励商城管理") { showRewardAdmin = true }
             row("shield.lefthalf.filled", "审计日志") { showAudit = true }
             row("icloud.and.arrow.up", "云同步") { showCloudSync = true }
+            row("crown.fill", "家分宝会员") { showMembership = true }
             row("qrcode", "兑换核销") { showRedeemAdmin = true }
         }
     }
@@ -230,6 +233,8 @@ struct FamilyManageSheet: View {
     @State private var newRole: MemberRole = .child
     @State private var newEmoji = "👦"
     @State private var editingBirthday: Member?
+    @State private var addBlocked = false
+    @State private var showMembershipFromManage = false
 
     private var family: Family? { app.currentFamily(in: context) }
     private var me: Member? { app.currentMember(in: context) }
@@ -275,6 +280,12 @@ struct FamilyManageSheet: View {
                     }
                     Button("添加") {
                         guard let f = family, !newName.isEmpty else { return }
+                        let active = members.filter { $0.status == .active }.count
+                        guard MembershipGate.canAddMember(currentActive: active,
+                                                          state: MembershipState.load()) else {
+                            addBlocked = true
+                            return
+                        }
                         _ = FamilyService.addMember(to: f, name: newName, role: newRole, emoji: newEmoji,
                                                      context: context)
                         Haptics.success()
@@ -295,6 +306,13 @@ struct FamilyManageSheet: View {
                 BirthdayEditSheet(member: m)
                     .presentationDetents([.medium])
             }
+            .alert("免费版最多 3 位成员", isPresented: $addBlocked) {
+                Button("去看看会员") { showMembershipFromManage = true }
+                Button("知道了", role: .cancel) {}
+            } message: {
+                Text("升级会员解锁无限成员")
+            }
+            .sheet(isPresented: $showMembershipFromManage) { MembershipSheet() }
         }
     }
 

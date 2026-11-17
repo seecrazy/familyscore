@@ -18,15 +18,29 @@ struct ExportSheet: View {
         return allMembers.filter { $0.familyID == f.id && $0.status == .active }
     }
 
+    private var exportAllowed: Bool {
+        MembershipGate.allows(.dataExport, state: MembershipState.load())
+    }
+
     var body: some View {
         NavigationStack {
             List {
+                if !exportAllowed {
+                    Section {
+                        Label("数据导出是会员功能", systemImage: "crown.fill")
+                            .foregroundStyle(Theme.gold)
+                        Text("升级会员解锁导出/导入，用于换机迁移与分家导出")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button("去看看会员") { showMembership = true }
+                    }
+                }
                 Section {
                     Button {
                         export(memberFilter: nil, suffix: "全量")
                     } label: {
                         Label("导出整个家庭（JSON）", systemImage: "square.and.arrow.up")
                     }
+                    .disabled(!exportAllowed)
                 } header: {
                     Text("全量备份")
                 } footer: {
@@ -59,6 +73,7 @@ struct ExportSheet: View {
                     } label: {
                         Label("从 JSON 导入（合并）", systemImage: "square.and.arrow.down")
                     }
+                    .disabled(!exportAllowed)
                 } footer: {
                     Text("按记录唯一 ID 幂等合并：重复导入同一份文件不会产生重复数据")
                 }
@@ -78,6 +93,7 @@ struct ExportSheet: View {
                 ShareSheet(url: item.url)
                     .ignoresSafeArea()
             }
+            .sheet(isPresented: $showMembership) { MembershipSheet() }
             .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in
                 switch result {
                 case .success(let url):
@@ -93,6 +109,7 @@ struct ExportSheet: View {
     private struct ShareItem: Identifiable { let id = UUID(); let url: URL }
 
     @State private var shareItem: ShareItem?
+    @State private var showMembership = false
 
     private func export(memberFilter: [UUID]?, suffix: String) {
         guard let f = family else { return }

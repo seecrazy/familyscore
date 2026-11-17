@@ -204,15 +204,24 @@ struct OnboardingView: View {
             VStack(spacing: 18) {
                 stepHeader("挑一套规则开始", "第 4 步 · 随时能改")
                 ForEach(RuleTemplateService.TemplateKind.allCases) { kind in
+                    let locked = !MembershipGate.isTemplateAllowed(kind, state: MembershipState.load())
                     Button {
+                        guard !locked else { Haptics.warning(); return }
                         Haptics.light()
                         template = kind
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(kind.rawValue)
-                                    .font(.body.weight(.semibold))
-                                    .foregroundStyle(.primary)
+                                HStack(spacing: 6) {
+                                    Text(kind.rawValue)
+                                        .font(.body.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                    if locked {
+                                        Image(systemName: "crown.fill")
+                                            .font(.caption2)
+                                            .foregroundStyle(Theme.gold)
+                                    }
+                                }
                                 Text(kind.subtitle)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -220,8 +229,9 @@ struct OnboardingView: View {
                             Spacer()
                             Image(systemName: template == kind ? "checkmark.circle.fill" : "circle")
                                 .font(.title3)
-                                .foregroundStyle(Theme.primary)
+                                .foregroundStyle(locked ? .secondary : Theme.primary)
                         }
+                        .opacity(locked ? 0.6 : 1)
                         .padding(14)
                         .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: 16))
                         .overlay(

@@ -1,0 +1,84 @@
+{
+  "identifier" : "F3A1C0DE-0001-4000-8000-000000000001",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "com.sanshi.familyscore",
+    "_developerTeamID" : "LOCALTEST",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "zh_CN",
+    "_storefront" : "CHN",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21400000",
+      "localizations" : [
+
+      ],
+      "name" : "家分宝会员",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "18.00",
+          "familyShareable" : false,
+          "groupNumber" : "21400000",
+          "internalID" : "6A100000",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "无限成员·永久历史·全部模板·完整年报",
+              "displayName" : "家分宝会员·月付",
+              "locale" : "zh_CN"
+            }
+          ],
+          "productID" : "com.sanshi.familyscore.member.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "会员月付",
+          "subscriptionGroupID" : "21400000",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "128.00",
+          "familyShareable" : false,
+          "groupNumber" : "21400000",
+          "internalID" : "6B100000",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "月付立省 ¥88，解锁全部会员权益",
+              "displayName" : "家分宝会员·年付",
+              "locale" : "zh_CN"
+            }
+          ],
+          "productID" : "com.sanshi.familyscore.member.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "会员年付",
+          "subscriptionGroupID" : "21400000",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
